@@ -1,0 +1,526 @@
+<!-- 
+    RAY WHITE AI CHAT PLUGIN
+    Copy and paste this entire block into your website's <body> tag, preferably at the end.
+    Ensure you are running the backend server and update the API_URL variable in the script if needed.
+-->
+
+<!-- Font Awesome for Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+    /* Chat Widget Styles */
+    :root {
+        --rw-primary: #FEE227;
+        --rw-secondary: #333;
+        --rw-accent: #000;
+        --rw-white: #fff;
+        --rw-font: 'Outfit', sans-serif;
+    }
+
+    #chat-widget-container {
+        font-family: var(--rw-font);
+        z-index: 9999;
+        position: fixed;
+        bottom: 0;
+        right: 0;
+    }
+
+    /* Toggle Button */
+    .rw-chat-toggle {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background: var(--rw-primary);
+        border: none;
+        border-radius: 50%;
+        box-shadow: 0 4px 15px rgba(254, 226, 39, 0.4);
+        cursor: pointer;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: var(--rw-accent);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .rw-chat-toggle:hover {
+        transform: scale(1.1);
+    }
+
+    /* Chat Box */
+    .rw-chat-widget {
+        position: fixed;
+        bottom: 100px;
+        right: 30px;
+        width: 380px;
+        height: 600px;
+        max-height: 80vh;
+        background: var(--rw-white);
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 10000;
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    }
+
+    .rw-chat-widget.active {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: all;
+    }
+
+    /* Header */
+    .rw-chat-header {
+        background: var(--rw-accent);
+        color: var(--rw-white);
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .rw-agent-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .rw-avatar {
+        position: relative;
+        width: 40px;
+        height: 40px;
+    }
+
+    .rw-avatar img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 2px solid var(--rw-white);
+    }
+
+    .rw-status-dot {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 10px;
+        height: 10px;
+        background: #2ecc71;
+        border-radius: 50%;
+        border: 2px solid var(--rw-accent);
+    }
+
+    .rw-agent-info .name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: block;
+    }
+
+    .rw-agent-info .status {
+        font-size: 0.75rem;
+        opacity: 0.8;
+    }
+
+    #rw-close-chat {
+        background: none;
+        border: none;
+        color: var(--rw-white);
+        font-size: 1.2rem;
+        cursor: pointer;
+        opacity: 0.7;
+    }
+
+    #rw-close-chat:hover {
+        opacity: 1;
+    }
+
+    /* Body */
+    .rw-chat-body {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f4f4f4;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .rw-message {
+        max-width: 85%;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .rw-message.bot {
+        align-self: flex-start;
+    }
+
+    .rw-message.user {
+        align-self: flex-end;
+        align-items: flex-end;
+    }
+
+    .rw-message-content {
+        padding: 12px 16px;
+        border-radius: 15px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        position: relative;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .rw-message.bot .rw-message-content {
+        background: var(--rw-white);
+        color: var(--rw-secondary);
+        border-bottom-left-radius: 5px;
+    }
+
+    .rw-message.user .rw-message-content {
+        background: var(--rw-primary);
+        color: var(--rw-accent);
+        border-bottom-right-radius: 5px;
+    }
+
+    .rw-timestamp {
+        font-size: 0.7rem;
+        color: #999;
+        margin: 0 5px;
+    }
+
+    /* Footer */
+    .rw-chat-footer {
+        padding: 15px;
+        background: var(--rw-white);
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+    }
+
+    .rw-chat-footer input {
+        flex: 1;
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 25px;
+        outline: none;
+        font-family: var(--rw-font);
+    }
+
+    .rw-chat-footer input:focus {
+        border-color: var(--rw-primary);
+    }
+
+    .rw-chat-footer button {
+        background: var(--rw-accent);
+        color: var(--rw-white);
+        border: none;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Property Card */
+    .rw-property-card {
+        background: var(--rw-white);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 250px;
+        transition: transform 0.2s;
+    }
+
+    .rw-property-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .rw-property-card img {
+        width: 100%;
+        height: 140px;
+        object-fit: cover;
+    }
+
+    .rw-property-card .info {
+        padding: 10px;
+    }
+
+    .rw-property-card h4 {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+        color: var(--rw-accent);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 0;
+    }
+
+    .rw-property-card .price {
+        color: #DAA520;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .rw-property-card .location {
+        font-size: 0.75rem;
+        color: #666;
+        margin-bottom: 8px;
+    }
+
+    .rw-property-card .view-btn {
+        display: block;
+        text-align: center;
+        background: var(--rw-secondary);
+        color: var(--rw-white);
+        text-decoration: none;
+        padding: 6px;
+        border-radius: 5px;
+        font-size: 0.8rem;
+    }
+
+    .rw-property-card .view-btn:hover {
+        background: var(--rw-accent);
+    }
+
+    /* Typing Indicator */
+    .rw-typing-indicator {
+        display: flex;
+        gap: 5px;
+        padding: 10px 15px;
+        background: var(--rw-white);
+        border-radius: 15px;
+        border-bottom-left-radius: 5px;
+        width: fit-content;
+    }
+
+    .rw-typing-indicator span {
+        width: 6px;
+        height: 6px;
+        background: #ccc;
+        border-radius: 50%;
+        animation: rw-bounce 1.4s infinite ease-in-out both;
+    }
+
+    .rw-typing-indicator span:nth-child(1) {
+        animation-delay: -0.32s;
+    }
+
+    .rw-typing-indicator span:nth-child(2) {
+        animation-delay: -0.16s;
+    }
+
+    @keyframes rw-bounce {
+
+        0%,
+        80%,
+        100% {
+            transform: scale(0);
+        }
+
+        40% {
+            transform: scale(1);
+        }
+    }
+</style>
+
+<div id="chat-widget-container">
+    <!-- Chat Toggle Button -->
+    <button id="rw-chat-toggle" class="rw-chat-toggle">
+        <i class="fas fa-comment-alt"></i>
+    </button>
+
+    <!-- Chat Widget -->
+    <div id="rw-chat-widget" class="rw-chat-widget">
+        <div class="rw-chat-header">
+            <div class="rw-agent-info">
+                <div class="rw-avatar">
+                    <img src="https://ui-avatars.com/api/?name=Ray+White&background=FEE227&color=000" alt="Agent">
+                    <span class="rw-status-dot"></span>
+                </div>
+                <div class="text">
+                    <span class="name">Ray White Assistant</span>
+                    <span class="status">Online</span>
+                </div>
+            </div>
+            <button id="rw-close-chat"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="rw-chat-body" id="rw-chat-body">
+            <div class="rw-message bot">
+                <div class="rw-message-content">
+                    Hello! 👋 I'm your personal real estate assistant. How can I help you find your dream property
+                    today?
+                </div>
+                <span class="rw-timestamp">Just now</span>
+            </div>
+        </div>
+        <div class="rw-chat-footer">
+            <input type="text" id="rw-chat-input" placeholder="Type a message...">
+            <button id="rw-send-btn"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        // Configuration
+        const API_URL = 'http://localhost:3000/api/chat'; // CHANGE THIS TO YOUR PRODUCTION SERVER URL
+
+        const chatToggle = document.getElementById('rw-chat-toggle');
+        const chatWidget = document.getElementById('rw-chat-widget');
+        const closeChat = document.getElementById('rw-close-chat');
+        const chatInput = document.getElementById('rw-chat-input');
+        const sendBtn = document.getElementById('rw-send-btn');
+        const chatBody = document.getElementById('rw-chat-body');
+
+        let chatHistory = [];
+
+        // Toggle Chat
+        chatToggle.addEventListener('click', () => {
+            chatWidget.classList.add('active');
+            chatToggle.style.display = 'none';
+        });
+
+        closeChat.addEventListener('click', () => {
+            chatWidget.classList.remove('active');
+            setTimeout(() => {
+                chatToggle.style.display = 'flex';
+            }, 300);
+        });
+
+        // Send Message
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Add User Message
+            addMessage(message, 'user');
+            chatInput.value = '';
+
+            // Show Typing Indicator
+            showTypingIndicator();
+
+            // Call API
+            fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    history: chatHistory
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    removeTypingIndicator();
+
+                    // Add Bot Message
+                    if (data.text) {
+                        addMessage(data.text, 'bot');
+                    }
+
+                    // Render Properties if any
+                    if (data.properties && data.properties.length > 0) {
+                        renderProperties(data.properties);
+                    }
+
+                    // Update History
+                    chatHistory.push({ role: 'user', parts: message });
+                    chatHistory.push({ role: 'model', parts: data.text || 'Here are some properties.' });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    removeTypingIndicator();
+                    addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+                });
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('rw-message', sender);
+
+            const contentDiv = document.createElement('div');
+            contentDiv.classList.add('rw-message-content');
+            // Convert markdown links to HTML links if needed, for now simple text
+            // Basic linkify
+            const linkifiedText = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:inherit;text-decoration:underline;">$1</a>');
+            contentDiv.innerHTML = linkifiedText;
+
+            const timestamp = document.createElement('span');
+            timestamp.classList.add('rw-timestamp');
+            timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(timestamp);
+
+            chatBody.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function renderProperties(properties) {
+            const container = document.createElement('div');
+            container.classList.add('rw-message', 'bot');
+            container.style.width = '100%';
+
+            properties.forEach(prop => {
+                const card = document.createElement('div');
+                card.classList.add('rw-property-card');
+
+                card.innerHTML = `
+                    <img src="${prop.imageUrl}" alt="${prop.title}" onerror="this.src='https://via.placeholder.com/250x140?text=No+Image'">
+                    <div class="info">
+                        <h4>${prop.title}</h4>
+                        <div class="location"><i class="fas fa-map-marker-alt"></i> ${prop.location}</div>
+                        <div class="price">${prop.price}</div>
+                        <a href="${prop.url}" target="_blank" class="view-btn">View Details</a>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+
+            chatBody.appendChild(container);
+            scrollToBottom();
+        }
+
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.id = 'rw-typing-indicator';
+            indicator.classList.add('rw-message', 'bot');
+            indicator.innerHTML = `
+                <div class="rw-typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+            chatBody.appendChild(indicator);
+            scrollToBottom();
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('rw-typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        function scrollToBottom() {
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+    })();
+</script>

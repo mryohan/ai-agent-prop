@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ray White - Premium Real Estate</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Mock Website Content -->
+    <header>
+        <div class="container">
+            <div class="logo">Ray White <span class="highlight">Prestige</span></div>
+            <nav>
+                <a href="#">Buy</a>
+                <a href="#">Rent</a>
+                <a href="#">Sold</a>
+                <a href="#">About Us</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Find Your Dream Home</h1>
+            <p>Experience the finest properties in Jakarta and beyond.</p>
+            <div class="search-bar">
+                <input type="text" placeholder="Search by location, property type...">
+                <button><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <section class="featured">
+        <div class="container">
+            <h2>Featured Listings</h2>
+            <div class="property-grid">
+                <!-- Mock properties just for background visuals -->
+                <div class="property-card-mock">
+                    <div class="img-placeholder"></div>
+                    <div class="details">
+                        <h3>Luxury Villa in Kemang</h3>
+                        <p>Rp 15 Milyar</p>
+                    </div>
+                </div>
+                <div class="property-card-mock">
+                    <div class="img-placeholder"></div>
+                    <div class="details">
+                        <h3>Modern Apartment in CBD</h3>
+                        <p>Rp 3.5 Milyar</p>
+                    </div>
+                </div>
+                <div class="property-card-mock">
+                    <div class="img-placeholder"></div>
+                    <div class="details">
+                        <h3>Cozy House in Menteng</h3>
+                        <p>Rp 25 Milyar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chat Widget -->
+    <div id="chat-widget" class="chat-widget">
+        <div class="chat-header" id="chat-header">
+            <div class="agent-info">
+                <div class="avatar">
+                    <img src="https://ui-avatars.com/api/?name=Ray+White&background=FEE227&color=000" alt="Agent">
+                    <span class="status-dot"></span>
+                </div>
+                <div class="text">
+                    <span class="name">Ray White Assistant</span>
+                    <span class="status">Online</span>
+                </div>
+            </div>
+            <button id="close-chat"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <div class="message bot">
+                <div class="message-content">
+                    Hello! 👋 I'm your personal real estate assistant. How can I help you find your dream property today?
+                </div>
+                <span class="timestamp">Just now</span>
+            </div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Chat Toggle Button -->
+    <button id="chat-toggle" class="chat-toggle">
+        <i class="fas fa-comment-alt"></i>
+    </button>
+
+    <script src="chat-widget.js"></script>
+</body>
+</html>

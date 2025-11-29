@@ -1,0 +1,19 @@
+{
+  "name": "real-estate-ai-chat",
+  "version": "1.0.0",
+  "description": "AI Chat Plugin for Real Estate Website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "scrape": "node scraper.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@google-cloud/vertexai": "^0.4.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0-rc.12",
+    "nodemailer": "^6.9.7"
+  }
+}
