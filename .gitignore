@@ -8,3 +8,10 @@ coverage/
 npm-debug.log
 cloudbuild.yaml
 cloudbuild-scrape.yaml
+# Log files
+*.log
+nohup.out
+
+# Test files
+test-*.html
+test-*.js

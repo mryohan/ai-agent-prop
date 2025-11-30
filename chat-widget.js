@@ -56,8 +56,32 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show Typing Indicator
         showTypingIndicator();
         
+        // Get current page context
+        const currentUrl = window.location.href;
+        const currentPath = window.location.pathname;
+        
+        // Try to extract property ID from URL (common patterns)
+        let currentPropertyId = null;
+        const urlPatterns = [
+            /\/property\/([^\/\?]+)/i,     // /property/123
+            /\/listing\/([^\/\?]+)/i,      // /listing/123
+            /[?&]id=([^&]+)/i,             // ?id=123
+            /[?&]propertyid=([^&]+)/i,     // ?propertyid=123
+            /\/([^\/]+)\.html?$/i          // /property-name.html
+        ];
+        
+        for (const pattern of urlPatterns) {
+            const match = currentUrl.match(pattern);
+            if (match) {
+                currentPropertyId = match[1];
+                break;
+            }
+        }
+        
         console.log('=== SENDING MESSAGE ===');
         console.log('Tenant ID:', tenantId);
+        console.log('Current URL:', currentUrl);
+        console.log('Current Property ID:', currentPropertyId);
         console.log('History entries:', chatHistory.length);
         console.log('Message:', message);
         
@@ -82,7 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({
                 message: message,
                 history: chatHistory,
-                tenant: tenantId
+                tenant: tenantId,
+                currentUrl: currentUrl,
+                currentPropertyId: currentPropertyId
             }),
             signal: controller.signal
         })
