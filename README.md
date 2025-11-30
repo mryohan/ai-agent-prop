@@ -29,7 +29,8 @@ An enterprise-grade conversational AI agent for real estate property search, bui
 
 Ray White AI Agent is a production-ready enterprise solution that transforms real estate property search through intelligent conversation. The system handles multiple real estate offices (multi-tenant), prevents AI hallucinations, blocks security threats, and provides seamless property discovery with automated email notifications.
 
-**Live Demo**: [https://ai-agent-prop-678376481425.asia-southeast2.run.app](https://ai-agent-prop-678376481425.asia-southeast2.run.app)
+**Live Demo**: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
+[https://aldilawibowo.raywhite.co.id](https://aldilawibowo.raywhite.co.id)
 
 ### Problem Statement
 
@@ -322,7 +323,7 @@ Comprehensive guides included in the repository:
 ## 🎬 Demo
 
 ### Live System
-**URL**: [https://ai-agent-prop-678376481425.asia-southeast2.run.app](https://ai-agent-prop-678376481425.asia-southeast2.run.app)
+**URL**: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
 
 ### Chat Widget
 The chat widget can be embedded on any website:
@@ -461,11 +462,12 @@ Properties are stored as JSON arrays:
 
 ## 🤝 Contributing
 
-This project is submitted for the Kaggle Agents Intensive Capstone Project competition. 
+This project is supported by these people.
+**Agents**: cernan.lantang@raywhite.co.id and aldila.wibowo@raywhite.co.id
 
 For inquiries or collaboration:
 - **GitHub**: [mryohan/ai-agent-prop](https://github.com/mryohan/ai-agent-prop)
-- **Email**: yohannes.siregar@raywhite.co.id
+- **Email**: yohannes.siregar@raywhite.co.id and siryohannes89@gmail.com
 
 ---
 
@@ -492,7 +494,7 @@ Create an issue on [GitHub Issues](https://github.com/mryohan/ai-agent-prop/issu
 Refer to the comprehensive guides in the repository
 
 ### Live Demo
-Test the system at: [https://ai-agent-prop-678376481425.asia-southeast2.run.app](https://ai-agent-prop-678376481425.asia-southeast2.run.app)
+Test the system at: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
 
 ---
 
