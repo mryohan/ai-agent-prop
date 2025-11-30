@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Isolation Test - Two Agents Side by Side</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .tenant-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tenant-panel h2 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #FEE227;
+        }
+        .aldilawibowo h2 { border-bottom-color: #4CAF50; }
+        .cernanlantang h2 { border-bottom-color: #2196F3; }
+        .info {
+            background: #fffbcc;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #FEE227;
+        }
+        .info h3 {
+            margin-top: 0;
+            font-size: 14px;
+            text-transform: uppercase;
+            color: #666;
+        }
+        .info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .info li {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔒 Tenant Isolation Test - Two Agents Side by Side</h1>
+    <p style="text-align: center; color: #666;">Both widgets should only show properties from their respective offices</p>
+    
+    <div class="container">
+        <!-- Aldilawibowo Panel -->
+        <div class="tenant-panel aldilawibowo">
+            <h2>🟢 Aldilawibowo (Ray White Signature Kuningan)</h2>
+            <div class="info">
+                <h3>Expected Behavior:</h3>
+                <ul>
+                    <li>Tenant ID: <code>aldilawibowo.raywhite.co.id</code></li>
+                    <li>Office: Ray White Signature Kuningan</li>
+                    <li>Properties: Should ONLY show Aldilawibowo's 258 listings</li>
+                    <li>Sample URL pattern: <code>aldilawibowo.raywhite.co.id</code></li>
+                </ul>
+            </div>
+            
+            <!-- Aldilawibowo Widget -->
+            <link rel="stylesheet" href="https://ai-agent-prop-678376481425.asia-southeast2.run.app/widget.css">
+            <div id="chat-toggle-aldi">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H6L4 18V4H20V16Z" fill="white"/>
+                </svg>
+            </div>
+            <div id="chat-widget-aldi" data-tenant-id="aldilawibowo.raywhite.co.id">
+                <div class="chat-header">
+                    <h3>Aldilawibowo AI Assistant</h3>
+                    <button class="close-chat">&times;</button>
+                </div>
+                <div class="chat-body"></div>
+                <div class="chat-input">
+                    <input type="text" class="chat-input-field" placeholder="Ask about Aldilawibowo properties...">
+                    <button class="send-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="white"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cernanlantang Panel -->
+        <div class="tenant-panel cernanlantang">
+            <h2>🔵 Cernanlantang (Ray White Menteng)</h2>
+            <div class="info">
+                <h3>Expected Behavior:</h3>
+                <ul>
+                    <li>Tenant ID: <code>cernanlantang.raywhite.co.id</code></li>
+                    <li>Office: Ray White Menteng</li>
+                    <li>Properties: Should ONLY show Cernanlantang's 244 listings</li>
+                    <li>Sample URL pattern: <code>cernanlantang.raywhite.co.id</code></li>
+                </ul>
+            </div>
+            
+            <!-- Cernanlantang Widget -->
+            <div id="chat-toggle-cernan">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H6L4 18V4H20V16Z" fill="white"/>
+                </svg>
+            </div>
+            <div id="chat-widget-cernan" data-tenant-id="cernanlantang.raywhite.co.id">
+                <div class="chat-header">
+                    <h3>Cernanlantang AI Assistant</h3>
+                    <button class="close-chat">&times;</button>
+                </div>
+                <div class="chat-body"></div>
+                <div class="chat-input">
+                    <input type="text" class="chat-input-field" placeholder="Ask about Cernanlantang properties...">
+                    <button class="send-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="white"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load widget script for Aldilawibowo
+        const scriptAldi = document.createElement('script');
+        scriptAldi.src = 'https://ai-agent-prop-678376481425.asia-southeast2.run.app/chat-widget.js';
+        scriptAldi.onload = () => {
+            console.log('Aldilawibowo widget loaded');
+            // Initialize for aldilawibowo
+            initWidget('aldi', 'aldilawibowo.raywhite.co.id');
+        };
+        document.body.appendChild(scriptAldi);
+
+        // Load widget script for Cernanlantang
+        const scriptCernan = document.createElement('script');
+        scriptCernan.src = 'https://ai-agent-prop-678376481425.asia-southeast2.run.app/chat-widget.js';
+        scriptCernan.onload = () => {
+            console.log('Cernanlantang widget loaded');
+            // Initialize for cernanlantang
+            initWidget('cernan', 'cernanlantang.raywhite.co.id');
+        };
+        document.body.appendChild(scriptCernan);
+
+        function initWidget(suffix, tenantId) {
+            const chatToggle = document.getElementById(`chat-toggle-${suffix}`);
+            const chatWidget = document.getElementById(`chat-widget-${suffix}`);
+            const closeChat = chatWidget.querySelector('.close-chat');
+            const chatInput = chatWidget.querySelector('.chat-input-field');
+            const sendBtn = chatWidget.querySelector('.send-btn');
+            const chatBody = chatWidget.querySelector('.chat-body');
+
+            console.log(`[${tenantId}] Initializing widget`);
+
+            chatToggle.addEventListener('click', () => {
+                chatWidget.classList.add('active');
+                chatToggle.style.display = 'none';
+            });
+
+            closeChat.addEventListener('click', () => {
+                chatWidget.classList.remove('active');
+                setTimeout(() => {
+                    chatToggle.style.display = 'flex';
+                }, 300);
+            });
+
+            function addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message', sender);
+                messageDiv.textContent = text;
+                chatBody.appendChild(messageDiv);
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }
+
+            function sendMessage() {
+                const message = chatInput.value.trim();
+                if (!message) return;
+
+                addMessage(message, 'user');
+                chatInput.value = '';
+
+                console.log(`[${tenantId}] Sending: ${message}`);
+
+                fetch('https://ai-agent-prop-678376481425.asia-southeast2.run.app/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Tenant-ID': tenantId
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: [],
+                        tenant: tenantId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(`[${tenantId}] Response:`, data);
+                    if (data.text) {
+                        addMessage(data.text, 'bot');
+                    }
+                    if (data.properties && data.properties.length > 0) {
+                        addMessage(`Found ${data.properties.length} properties. First URL: ${data.properties[0].url}`, 'bot');
+                    }
+                })
+                .catch(error => {
+                    console.error(`[${tenantId}] Error:`, error);
+                    addMessage('Error: ' + error.message, 'bot');
+                });
+            }
+
+            sendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        }
+    </script>
+</body>
+</html>

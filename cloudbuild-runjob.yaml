@@ -1,0 +1,11 @@
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        # Ensure gcloud project is set
+        gcloud config set project $PROJECT_ID
+        gcloud run jobs execute ai-agent-prop-scrape --region=us-central1
+
+timeout: 1200s

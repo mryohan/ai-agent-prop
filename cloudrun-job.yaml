@@ -1,0 +1,19 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: ai-agent-prop-scrape
+spec:
+  template:
+    spec:
+      template:
+        spec:
+          containers:
+            - image: gcr.io/PROJECT_ID/ai-agent-prop:latest
+              command: ["node", "scraper.js"]
+              env:
+                - name: GCS_BUCKET
+                  value: "PROJECT_BUCKET"
+                - name: GCS_PATH
+                  value: "properties.json"
+          taskCount: 1
+          timeout: "600s"

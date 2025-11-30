@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - AI Agent Analytics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* Login Screen */
+        #loginScreen {
+            max-width: 400px;
+            margin: 100px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        #loginScreen h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        #loginScreen input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        #loginScreen button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        #loginScreen button:hover {
+            background: #5568d3;
+        }
+        .error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        /* Dashboard */
+        #dashboard {
+            display: none;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+        .logout-btn {
+            padding: 10px 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .metric-card h3 {
+            color: #666;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .satisfaction-good { color: #27ae60; }
+        .satisfaction-warning { color: #f39c12; }
+        .satisfaction-poor { color: #e74c3c; }
+        
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #666;
+            font-size: 14px;
+        }
+        td {
+            font-size: 14px;
+        }
+        
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        
+        .feedback-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border-left: 4px solid #e74c3c;
+        }
+        .feedback-item.positive {
+            border-left-color: #27ae60;
+        }
+        .feedback-text {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .feedback-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .rag-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .rag-status::before {
+            content: "✓";
+            background: #27ae60;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        /* Security Incidents Styling */
+        .severity-critical {
+            background: #e74c3c;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .severity-high {
+            background: #e67e22;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .severity-medium {
+            background: #f39c12;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-blocked {
+            background: #c0392b;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .status-logged {
+            background: #95a5a6;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .threat-badge {
+            display: inline-block;
+            background: #34495e;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-size: 10px;
+            margin: 2px;
+            font-weight: 500;
+        }
+        .message-preview {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            color: #555;
+        }
+        .details-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .details-btn:hover {
+            background: #2980b9;
+        }
+        
+        /* Modal for incident details */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+        .modal-close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .modal-close:hover {
+            color: #000;
+        }
+        .incident-detail {
+            margin-bottom: 15px;
+        }
+        .incident-detail label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .incident-detail pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <h1>🔐 Admin Login</h1>
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+            <div id="loginError" class="error"></div>
+        </form>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard">
+        <div class="header">
+            <h1>📊 AI Agent Analytics Dashboard</h1>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <h3>Overall Satisfaction</h3>
+                <div class="metric-value" id="overallSatisfaction">--</div>
+                <div class="metric-label">User satisfaction rate</div>
+            </div>
+            <div class="metric-card">
+                <h3>Total Feedback</h3>
+                <div class="metric-value" id="totalFeedback">--</div>
+                <div class="metric-label">Total user feedback received</div>
+            </div>
+            <div class="metric-card">
+                <h3>Active Tenants</h3>
+                <div class="metric-value" id="activeTenants">--</div>
+                <div class="metric-label">Real estate agents using the system</div>
+            </div>
+            <div class="metric-card">
+                <h3>Total Requests</h3>
+                <div class="metric-value" id="totalRequests">--</div>
+                <div class="metric-label">API requests processed</div>
+            </div>
+        </div>
+
+        <!-- RAG System Status -->
+        <div class="section">
+            <h2>🤖 RAG System Status</h2>
+            <div class="rag-status">
+                <span><strong>Active:</strong> System is learning from user feedback to improve responses</span>
+            </div>
+            <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                The RAG (Retrieval-Augmented Generation) system automatically retrieves relevant negative feedback 
+                before generating responses, helping the AI learn from past mistakes and provide better answers.
+            </p>
+        </div>
+
+        <!-- Tenant Feedback Details -->
+        <div class="section">
+            <h2>📈 Feedback by Tenant</h2>
+            <table id="feedbackTable">
+                <thead>
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Total Feedback</th>
+                        <th>👍 Positive</th>
+                        <th>👎 Negative</th>
+                        <th>Satisfaction Rate</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Recent Negative Feedback -->
+        <div class="section">
+            <h2>⚠️ Recent Negative Feedback (RAG Learning Source)</h2>
+            <div id="recentFeedback"></div>
+        </div>
+
+        <!-- Token Usage -->
+        <div class="section">
+            <h2>💰 Token Usage & Costs</h2>
+            <table id="tokenTable">
+                <thead>
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Total Tokens</th>
+                        <th>Cost (USD)</th>
+                        <th>Requests</th>
+                        <th>Usage</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Office Hierarchy -->
+        <div class="section">
+            <h2>🏢 Office Hierarchy (Priority Search)</h2>
+            <p style="color: #666; margin-bottom: 20px;">
+                <strong>Search Priority:</strong> Personal Listings → Office Group → Ray White Indonesia<br>
+                Configure which office each agent belongs to for intelligent property recommendations.
+            </p>
+            <table id="hierarchyTable">
+                <thead>
+                    <tr>
+                        <th>Agent (Personal Site)</th>
+                        <th>Level 1: Personal</th>
+                        <th>Level 2: Office Group</th>
+                        <th>Level 3: National</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Security Incidents -->
+        <div class="section">
+            <h2>🛡️ Security Incidents</h2>
+            <p style="color: #666; margin-bottom: 20px;">
+                Real-time monitoring of security threats including prompt injection, PII extraction attempts, SQL injection, and competitor link spam.
+                <span id="securityRefreshTime" style="font-style: italic; margin-left: 10px;"></span>
+            </p>
+            <div style="margin-bottom: 15px;">
+                <button onclick="refreshSecurityIncidents()" style="background: #e74c3c; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">🔄 Refresh</button>
+                <span id="securityCount" style="margin-left: 15px; font-weight: bold; color: #e74c3c;">Loading...</span>
+            </div>
+            <table id="securityTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Tenant</th>
+                        <th>Threat Type</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                        <th>Message Preview</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Co-Brokerage Settings -->
+        <div class="section">
+            <h2>🤝 Co-Brokerage Settings (Office-Wide Property Search)</h2>
+            <p style="color: #666; margin-bottom: 20px;">
+                Enable agents to search properties from colleague databases when their own listings don't match. 
+                This allows cross-office property recommendations without sharing direct links.
+            </p>
+            <table id="cobrokerageTable">
+                <thead>
+                    <tr>
+                        <th>Tenant</th>
+                        <th>Properties</th>
+                        <th>Office Search</th>
+                        <th>Shared With</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let sessionToken = null;
+
+        // Login handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+
+            try {
+                const response = await fetch('/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    sessionToken = data.sessionToken;
+                    localStorage.setItem('adminSession', sessionToken);
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'block';
+                    loadDashboard();
+                } else {
+                    errorDiv.textContent = 'Invalid email or password';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Login failed. Please try again.';
+            }
+        });
+
+        // Check for existing session
+        const savedSession = localStorage.getItem('adminSession');
+        if (savedSession) {
+            sessionToken = savedSession;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadDashboard();
+        }
+
+        function logout() {
+            sessionToken = null;
+            localStorage.removeItem('adminSession');
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'block';
+        }
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/admin/dashboard', {
+                    headers: { 'X-Session-Token': sessionToken }
+                });
+
+                if (!response.ok) {
+                    logout();
+                    return;
+                }
+
+                const data = await response.json();
+                updateMetrics(data);
+                updateFeedbackTable(data.feedback);
+                updateTokenTable(data.tenants);
+                updateRecentFeedback(data.feedback);
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        function updateMetrics(data) {
+            const feedback = data.feedback || {};
+            const tenants = Object.values(feedback);
+            
+            let totalFeedback = 0;
+            let totalPositive = 0;
+            
+            tenants.forEach(t => {
+                totalFeedback += t.total || 0;
+                totalPositive += t.thumbsUp || 0;
+            });
+            
+            const overallSatisfaction = totalFeedback > 0 
+                ? ((totalPositive / totalFeedback) * 100).toFixed(1) 
+                : 0;
+            
+            const satisfactionEl = document.getElementById('overallSatisfaction');
+            satisfactionEl.textContent = overallSatisfaction + '%';
+            satisfactionEl.className = 'metric-value ' + getSatisfactionClass(overallSatisfaction);
+            
+            document.getElementById('totalFeedback').textContent = totalFeedback;
+            document.getElementById('activeTenants').textContent = data.totalTenants || 0;
+            document.getElementById('totalRequests').textContent = data.summary?.totalRequests || 0;
+        }
+
+        function getSatisfactionClass(rate) {
+            if (rate >= 70) return 'satisfaction-good';
+            if (rate >= 40) return 'satisfaction-warning';
+            return 'satisfaction-poor';
+        }
+
+        function updateFeedbackTable(feedback) {
+            const tbody = document.getElementById('feedbackTable').querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            Object.entries(feedback || {}).forEach(([tenant, data]) => {
+                const rate = parseFloat(data.satisfactionRate);
+                const statusClass = rate >= 70 ? 'badge-success' : rate >= 40 ? 'badge-warning' : 'badge-danger';
+                const statusText = rate >= 70 ? 'Good' : rate >= 40 ? 'Fair' : 'Needs Improvement';
+                
+                const row = `
+                    <tr>
+                        <td>${tenant}</td>
+                        <td>${data.total}</td>
+                        <td>${data.thumbsUp}</td>
+                        <td>${data.thumbsDown}</td>
+                        <td><strong>${data.satisfactionRate}%</strong></td>
+                        <td><span class="badge ${statusClass}">${statusText}</span></td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function updateTokenTable(tenants) {
+            const tbody = document.getElementById('tokenTable').querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            (tenants || []).forEach(tenant => {
+                const percentage = parseFloat(tenant.tokens.percentage);
+                const statusClass = percentage >= 80 ? 'badge-warning' : 'badge-success';
+                
+                const row = `
+                    <tr>
+                        <td>${tenant.tenant}</td>
+                        <td>${tenant.tokens.total.toLocaleString()}</td>
+                        <td>$${tenant.cost.total}</td>
+                        <td>${tenant.requests}</td>
+                        <td><span class="badge ${statusClass}">${tenant.tokens.percentage}%</span></td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function updateRecentFeedback(feedback) {
+            const container = document.getElementById('recentFeedback');
+            container.innerHTML = '';
+            
+            let allNegativeFeedback = [];
+            Object.values(feedback || {}).forEach(tenant => {
+                (tenant.recentFeedback || []).forEach(fb => {
+                    if (fb.rating === 'thumbs_down' && fb.feedback) {
+                        allNegativeFeedback.push(fb);
+                    }
+                });
+            });
+            
+            allNegativeFeedback.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            allNegativeFeedback.slice(0, 10).forEach(fb => {
+                const div = document.createElement('div');
+                div.className = 'feedback-item';
+                div.innerHTML = `
+                    <div class="feedback-text"><strong>Issue:</strong> ${fb.feedback}</div>
+                    <div class="feedback-meta">User query: "${fb.userMessage || 'N/A'}" • ${new Date(fb.timestamp).toLocaleString()}</div>
+                `;
+                container.appendChild(div);
+            });
+            
+            if (allNegativeFeedback.length === 0) {
+                container.innerHTML = '<p style="color: #27ae60;">🎉 No negative feedback yet! All users are satisfied.</p>';
+            }
+        }
+
+        async function loadHierarchy() {
+            try {
+                const response = await fetch('/admin/hierarchy', {
+                    headers: { 'X-Session-Token': sessionToken }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                updateHierarchyTable(data.hierarchy);
+            } catch (error) {
+                console.error('Error loading hierarchy:', error);
+            }
+        }
+
+        function updateHierarchyTable(hierarchy) {
+            const tbody = document.getElementById('hierarchyTable').querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            Object.entries(hierarchy || {}).forEach(([agent, config]) => {
+                const row = `
+                    <tr>
+                        <td><strong>${agent}</strong></td>
+                        <td><span class="badge badge-success">Own listings</span></td>
+                        <td>${config.office ? `<span class="badge" style="background: #e3f2fd; color: #1976d2;">${config.office}</span>` : '<em style="color: #999;">Not set</em>'}</td>
+                        <td>${config.national ? `<span class="badge" style="background: #f3e5f5; color: #7b1fa2;">${config.national}</span>` : '<em style="color: #999;">Not set</em>'}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            if (Object.keys(hierarchy || {}).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">No hierarchy configured yet</td></tr>';
+            }
+        }
+
+        async function loadCobrokerageSettings() {
+            try {
+                const response = await fetch('/admin/cobrokerage', {
+                    headers: { 'X-Session-Token': sessionToken }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                updateCobrokerageTable(data.tenants, data.availableTenants);
+            } catch (error) {
+                console.error('Error loading co-brokerage settings:', error);
+            }
+        }
+
+        function updateCobrokerageTable(tenants, availableTenants) {
+            const tbody = document.getElementById('cobrokerageTable').querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            (tenants || []).forEach(tenant => {
+                const sharedWith = tenant.sharedWithAll 
+                    ? 'All Ray White agents' 
+                    : tenant.sharedTenants.length > 0 
+                        ? tenant.sharedTenants.join(', ') 
+                        : 'None';
+                
+                const statusClass = tenant.enabled ? 'badge-success' : 'badge-danger';
+                const statusText = tenant.enabled ? 'Enabled' : 'Disabled';
+                const buttonText = tenant.enabled ? 'Disable' : 'Enable';
+                const buttonClass = tenant.enabled ? 'badge-danger' : 'badge-success';
+                
+                const row = `
+                    <tr>
+                        <td><strong>${tenant.tenantId}</strong></td>
+                        <td>${tenant.propertyCount} properties</td>
+                        <td><span class="badge ${statusClass}">${statusText}</span></td>
+                        <td style="font-size: 12px;">${sharedWith}</td>
+                        <td>
+                            <button class="badge ${buttonClass}" style="cursor: pointer; border: none;" 
+                                onclick="toggleCobrokerage('${tenant.tenantId}', ${!tenant.enabled})">
+                                ${buttonText}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        async function toggleCobrokerage(tenantId, enabled) {
+            try {
+                const response = await fetch(`/admin/cobrokerage/${tenantId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-Token': sessionToken
+                    },
+                    body: JSON.stringify({ enabled })
+                });
+
+                if (response.ok) {
+                    console.log(`Co-brokerage ${enabled ? 'enabled' : 'disabled'} for ${tenantId}`);
+                    loadCobrokerageSettings(); // Reload table
+                } else {
+                    alert('Failed to update co-brokerage settings');
+                }
+            } catch (error) {
+                console.error('Error updating co-brokerage:', error);
+                alert('Failed to update co-brokerage settings');
+            }
+        }
+
+        // Enhanced loadDashboard to include hierarchy, co-brokerage, and security
+        const originalLoadDashboard = loadDashboard;
+        loadDashboard = async function() {
+            await originalLoadDashboard();
+            await loadHierarchy();
+            await loadCobrokerageSettings();
+            await refreshSecurityIncidents();
+        };
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            if (sessionToken) loadDashboard();
+        }, 30000);
+    </script>
+
+    <!-- Security Incident Details Modal -->
+    <div id="incidentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🛡️ Security Incident Details</h2>
+                <span class="modal-close" onclick="closeIncidentModal()">&times;</span>
+            </div>
+            <div id="incidentDetails"></div>
+        </div>
+    </div>
+
+    <script>
+        // Security incidents management
+        async function refreshSecurityIncidents() {
+            const adminKey = sessionStorage.getItem('adminKey');
+            if (!adminKey) return;
+
+            document.getElementById('securityCount').textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`/admin/security-incidents?key=${adminKey}`);
+                const data = await response.json();
+
+                const tbody = document.querySelector('#securityTable tbody');
+                tbody.innerHTML = '';
+
+                if (data.incidents && data.incidents.length > 0) {
+                    document.getElementById('securityCount').textContent = 
+                        `${data.incidents.length} incident(s) in last 24 hours`;
+                    document.getElementById('securityCount').style.color = '#e74c3c';
+
+                    data.incidents.forEach(incident => {
+                        const row = document.createElement('tr');
+                        
+                        const timestamp = new Date(incident.timestamp);
+                        const timeStr = timestamp.toLocaleString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+
+                        // Get highest severity threat
+                        let highestSeverity = 'MEDIUM';
+                        let threatTypes = [];
+                        if (incident.threats && incident.threats.length > 0) {
+                            incident.threats.forEach(t => {
+                                threatTypes.push(t.type);
+                                if (t.severity === 'CRITICAL') highestSeverity = 'CRITICAL';
+                                else if (t.severity === 'HIGH' && highestSeverity !== 'CRITICAL') highestSeverity = 'HIGH';
+                            });
+                        } else if (incident.type) {
+                            threatTypes.push(incident.type);
+                        }
+
+                        const severityClass = `severity-${highestSeverity.toLowerCase()}`;
+                        const statusClass = incident.blocked ? 'status-blocked' : 'status-logged';
+                        const statusText = incident.blocked ? '🚫 BLOCKED' : '📝 LOGGED';
+
+                        const threatBadges = threatTypes.map(t => 
+                            `<span class="threat-badge">${t}</span>`
+                        ).join('');
+
+                        const messagePreview = (incident.message || 'N/A').substring(0, 50) + '...';
+
+                        row.innerHTML = `
+                            <td>${timeStr}</td>
+                            <td>${incident.tenantId || 'N/A'}</td>
+                            <td>${threatBadges}</td>
+                            <td><span class="${severityClass}">${highestSeverity}</span></td>
+                            <td><span class="${statusClass}">${statusText}</span></td>
+                            <td class="message-preview">${messagePreview}</td>
+                            <td><button class="details-btn" onclick='showIncidentDetails(${JSON.stringify(incident).replace(/'/g, "\\'")})'}>View Details</button></td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    document.getElementById('securityCount').textContent = '✅ No incidents in last 24 hours';
+                    document.getElementById('securityCount').style.color = '#27ae60';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #27ae60; padding: 20px;">✅ No security incidents detected</td></tr>';
+                }
+
+                document.getElementById('securityRefreshTime').textContent = 
+                    `Last updated: ${new Date().toLocaleTimeString()}`;
+
+            } catch (error) {
+                console.error('Error loading security incidents:', error);
+                document.getElementById('securityCount').textContent = 'Error loading incidents';
+                document.getElementById('securityCount').style.color = '#e74c3c';
+            }
+        }
+
+        function showIncidentDetails(incident) {
+            const modal = document.getElementById('incidentModal');
+            const detailsDiv = document.getElementById('incidentDetails');
+
+            let threatsHtml = '';
+            if (incident.threats && incident.threats.length > 0) {
+                threatsHtml = '<div class="incident-detail"><label>Detected Threats:</label><ul>';
+                incident.threats.forEach(t => {
+                    threatsHtml += `<li><strong>${t.type}</strong> (${t.severity}) - Pattern: <code>${t.pattern || 'N/A'}</code></li>`;
+                    if (t.urls) {
+                        threatsHtml += `<li style="margin-left: 20px;">URLs: ${t.urls.join(', ')}</li>`;
+                    }
+                });
+                threatsHtml += '</ul></div>';
+            }
+
+            let warningsHtml = '';
+            if (incident.warnings && incident.warnings.length > 0) {
+                warningsHtml = '<div class="incident-detail"><label>Sanitization Warnings:</label><ul>';
+                incident.warnings.forEach(w => {
+                    warningsHtml += `<li>${w}</li>`;
+                });
+                warningsHtml += '</ul></div>';
+            }
+
+            detailsDiv.innerHTML = `
+                <div class="incident-detail">
+                    <label>Timestamp:</label>
+                    <p>${new Date(incident.timestamp).toLocaleString()}</p>
+                </div>
+                <div class="incident-detail">
+                    <label>Tenant:</label>
+                    <p>${incident.tenantId || 'N/A'}</p>
+                </div>
+                <div class="incident-detail">
+                    <label>Status:</label>
+                    <p><span class="${incident.blocked ? 'status-blocked' : 'status-logged'}">${incident.blocked ? '🚫 BLOCKED' : '📝 LOGGED & ALLOWED'}</span></p>
+                </div>
+                ${threatsHtml}
+                ${warningsHtml}
+                <div class="incident-detail">
+                    <label>User Message:</label>
+                    <pre>${incident.message || 'N/A'}</pre>
+                </div>
+                ${incident.originalResponse ? `
+                <div class="incident-detail">
+                    <label>Original Response:</label>
+                    <pre>${incident.originalResponse}</pre>
+                </div>
+                ` : ''}
+                ${incident.sanitizedResponse ? `
+                <div class="incident-detail">
+                    <label>Sanitized Response:</label>
+                    <pre>${incident.sanitizedResponse}</pre>
+                </div>
+                ` : ''}
+                <div class="incident-detail">
+                    <label>IP Address:</label>
+                    <p>${incident.ipAddress || 'N/A'}</p>
+                </div>
+                <div class="incident-detail">
+                    <label>User Agent:</label>
+                    <pre>${incident.userAgent || 'N/A'}</pre>
+                </div>
+            `;
+
+            modal.style.display = 'block';
+        }
+
+        function closeIncidentModal() {
+            document.getElementById('incidentModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('incidentModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>

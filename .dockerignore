@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.env
+coverage
+.git
+.gitignore
+*.md
+cloudbuild.yaml
+properties.json

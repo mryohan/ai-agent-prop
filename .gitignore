@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+properties.json
+.DS_Store
+coverage/
+npm-debug.log
+cloudbuild.yaml
+cloudbuild-scrape.yaml

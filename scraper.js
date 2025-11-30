@@ -1,9 +1,24 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const fs = require('fs');
+const { Storage } = require('@google-cloud/storage');
+const { Firestore } = require('@google-cloud/firestore');
 
-const BASE_URL = 'https://cernanlantang.raywhite.co.id';
+const BASE_URL = process.env.SCRAPE_BASE_URL || 'https://cernanlantang.raywhite.co.id';
 const OUTPUT_FILE = 'properties.json';
+const GCS_BUCKET = process.env.GCS_BUCKET || null; // optional: bucket to upload the resulting JSON
+const TENANT_ID = process.env.TENANT_ID || 'default'; // tenant/website identifier
+const MULTI_TENANT_MODE = process.env.MULTI_TENANT_MODE === 'true';
+
+// Get tenant-specific GCS path
+function getTenantGcsPath() {
+    if (MULTI_TENANT_MODE && TENANT_ID !== 'default') {
+        return `${TENANT_ID}/properties.json`;
+    }
+    return process.env.GCS_PATH || OUTPUT_FILE;
+}
+
+const GCS_PATH = getTenantGcsPath();
 
 async function scrapeProperties() {
     console.log('Starting deep scrape...');
@@ -144,6 +159,44 @@ async function scrapeProperties() {
     console.log('\nScrape complete.');
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify(properties, null, 2));
     console.log(`Saved enriched data to ${OUTPUT_FILE}`);
+
+    if (GCS_BUCKET) {
+        // Upload to GCS
+        try {
+            const storage = new Storage();
+            await storage.bucket(GCS_BUCKET).upload(OUTPUT_FILE, {
+                destination: GCS_PATH,
+                contentType: 'application/json'
+            });
+            console.log(`Uploaded ${OUTPUT_FILE} to gs://${GCS_BUCKET}/${GCS_PATH}`);
+        } catch (e) {
+            console.error('Failed to upload to GCS:', e.message);
+        }
+
+            const FIRESTORE_COLLECTION = process.env.FIRESTORE_COLLECTION || null;
+            if (FIRESTORE_COLLECTION) {
+                try {
+                    const firestore = new Firestore({ projectId: process.env.GOOGLE_CLOUD_PROJECT_ID });
+                    const collection = (MULTI_TENANT_MODE && TENANT_ID !== 'default') 
+                        ? `${FIRESTORE_COLLECTION}_${TENANT_ID}` 
+                        : FIRESTORE_COLLECTION;
+                    console.log(`[${TENANT_ID}] Uploading ${properties.length} properties to Firestore collection ${collection}...`);
+                    const batchSize = 500;
+                    for (let i = 0; i < properties.length; i += batchSize) {
+                        const batch = firestore.batch();
+                        const chunk = properties.slice(i, i + batchSize);
+                        chunk.forEach((p) => {
+                            const docRef = firestore.collection(collection).doc(String(p.id));
+                            batch.set(docRef, p, { merge: true });
+                        });
+                        await batch.commit();
+                    }
+                    console.log('Uploaded properties to Firestore.');
+                } catch (e) {
+                    console.error('Failed to upload to Firestore:', e.message);
+                }
+            }
+    }
 }
 
 scrapeProperties();
