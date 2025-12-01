@@ -1,5 +1,5 @@
 const express = require('express');
-const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
 const fs = require('fs');
 const { Storage } = require('@google-cloud/storage');
@@ -126,6 +126,88 @@ async function sendEmail({ to, subject, text, html }) {
         return;
     }
 
+}
+
+// Helper function to validate and correct preferred_date
+// This prevents AI hallucination of dates (e.g., returning 2023 dates)
+function validateAndCorrectDate(preferredDate, conversationContext) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Try to parse the preferred_date from AI
+    let parsedDate = new Date(preferredDate);
+    
+    // Check if the date is invalid or in the past
+    const isInvalidDate = isNaN(parsedDate.getTime()) || parsedDate < today;
+    
+    // ALWAYS check conversation context for relative dates - AI often hallucinates dates
+    // even when user said "tomorrow", AI might pass "2023-10-27" or some other wrong date
+    const contextLower = (conversationContext || '').toLowerCase();
+    console.log(`[DATE_CORRECTION] Checking date: "${preferredDate}", isInvalid=${isInvalidDate}, context="${contextLower.substring(0, 200)}..."`);
+    
+    // First, check for explicit relative date terms in conversation
+    // These take priority because they represent user's actual intent
+    
+    // Tomorrow
+    if (/\b(tomorrow|besok)\b/i.test(contextLower)) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const correctedDate = tomorrow.toISOString().split('T')[0];
+        console.log(`[DATE_CORRECTION] Detected "tomorrow" -> correcting to ${correctedDate}`);
+        return correctedDate;
+    }
+    
+    // Day after tomorrow
+    if (/\b(day after tomorrow|lusa)\b/i.test(contextLower)) {
+        const dayAfter = new Date(today);
+        dayAfter.setDate(dayAfter.getDate() + 2);
+        const correctedDate = dayAfter.toISOString().split('T')[0];
+        console.log(`[DATE_CORRECTION] Detected "day after tomorrow" -> correcting to ${correctedDate}`);
+        return correctedDate;
+    }
+    
+    // Next week
+    if (/\b(next week|minggu depan)\b/i.test(contextLower)) {
+        const nextWeek = new Date(today);
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const correctedDate = nextWeek.toISOString().split('T')[0];
+        console.log(`[DATE_CORRECTION] Detected "next week" -> correcting to ${correctedDate}`);
+        return correctedDate;
+    }
+    
+    // Today / hari ini
+    if (/\b(today|hari ini)\b/i.test(contextLower)) {
+        const correctedDate = today.toISOString().split('T')[0];
+        console.log(`[DATE_CORRECTION] Detected "today" -> correcting to ${correctedDate}`);
+        return correctedDate;
+    }
+    
+    // This weekend
+    if (/\b(this weekend|weekend ini|akhir pekan)\b/i.test(contextLower)) {
+        const daysUntilSaturday = (6 - today.getDay() + 7) % 7 || 7;
+        const saturday = new Date(today);
+        saturday.setDate(saturday.getDate() + daysUntilSaturday);
+        const correctedDate = saturday.toISOString().split('T')[0];
+        console.log(`[DATE_CORRECTION] Detected "weekend" -> correcting to ${correctedDate}`);
+        return correctedDate;
+    }
+    
+    // If date is invalid and no relative terms found, default to tomorrow
+    if (isInvalidDate) {
+        const defaultDate = new Date(today);
+        defaultDate.setDate(defaultDate.getDate() + 1);
+        const correctedDate = defaultDate.toISOString().split('T')[0];
+        console.log(`[DATE_CORRECTION] Invalid date "${preferredDate}", defaulting to tomorrow: ${correctedDate}`);
+        return correctedDate;
+    }
+    
+    // Date is valid and no relative terms that override it
+    const validDate = parsedDate.toISOString().split('T')[0];
+    console.log(`[DATE_CORRECTION] Date "${preferredDate}" is valid, using: ${validDate}`);
+    return validDate;
+}
+
+function sendEmailViaSMTP(to, subject, text, html) {
     if (!transporter) {
         throw new Error('No email transporter configured');
     }
@@ -985,19 +1067,22 @@ app.get('/admin/security-incidents', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT_ID || 'your-project-id';
-const LOCATION = 'us-central1';
+const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT_ID || process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0734676219';
+// Vertex AI location - us-central1 is the most reliable region for Gemini models
+const LOCATION = process.env.VERTEX_AI_LOCATION || 'us-central1';
 
 // Initialize Vertex AI
-const vertex_ai = new VertexAI({ project: PROJECT_ID, location: LOCATION });
+const vertex_ai = new GoogleGenAI({ vertexai: true, project: PROJECT_ID, location: LOCATION });
 
-// Model configuration with fallback chain - using latest stable models
+// Model configuration with fallback chain
 const MODEL_PRIORITY = [
-    'gemini-2.0-flash-exp',      // Latest experimental - fastest
-    'gemini-2.5-flash',          // Stable latest flash
-    'gemini-2.5-pro',            // Most capable for complex queries
-    'gemini-2.0-flash-lite',     // Lightweight fallback
-    'gemini-2.5-flash-lite'      // Final fallback
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.0-flash-lite-001',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-2.0-flash-exp'       // Known working fallback
 ];
 let currentModelIndex = 0;
 let model = MODEL_PRIORITY[currentModelIndex];
@@ -1275,7 +1360,7 @@ startServer();
 
 // Tool definitions
 const tools = {
-    function_declarations: [
+    functionDeclarations: [
         {
             name: "search_properties",
             description: "Search for properties in your personal listings based on user criteria. Returns detailed info including description and points of interest.",
@@ -1363,8 +1448,8 @@ const systemInstruction = `You are a Ray White real estate assistant. Be friendl
 4. ALWAYS use tools before answering property queries - NEVER make up listings
 
 **CONVERSATION FLOW**:
-1. First message: Ask for visitor's name only
-2. After name: Ask property requirements, then search
+1. First message: Ask for visitor's name only (UNLESS user already provided name AND criteria)
+2. If user provides criteria (e.g. "buy house in Jakarta"): SEARCH IMMEDIATELY. Do not ask for more details first.
 3. After showing properties: Collect phone/email using 'collect_visitor_info' tool
 4. If interested in viewing: Use 'schedule_viewing' tool
 5. End: Use 'send_inquiry_email' to notify agent
@@ -1375,7 +1460,8 @@ const systemInstruction = `You are a Ray White real estate assistant. Be friendl
 - Price conversion: '500 juta'=500000000, '1 milyar'=1000000000
 - Property types: rumah (house), apartemen (apartment), ruko (shophouse), tanah (land), gedung (building)
 - If no houses found, suggest apartments then shophouses
-- Include property details: title, price, link (personal listings only)
+- Include property details: title, price, location, key features, and Property ID (e.g. "ID: 123456") so you can reference it later.
+- CRITICAL: DO NOT include URLs, links, or [Link] text in your response. The chat interface automatically renders property cards with clickable links. Just describe the property.
 - Highlight key features and POIs from property data
 
 **NO MATCH STRATEGIES** (in order):
@@ -1400,38 +1486,49 @@ const systemInstruction = `You are a Ray White real estate assistant. Be friendl
 
 // Function to get model with current configuration
 function getGenerativeModel() {
-    return vertex_ai.preview.getGenerativeModel({
-        model: model,
-        generation_config: {
-            max_output_tokens: 1024,
-            temperature: 0.2, // Lower temperature = less creative/hallucination (was 0.4)
-            top_p: 0.8, // More focused sampling (was 0.9)
-            top_k: 10, // Reduced from 20 for more deterministic output
-            candidateCount: 1, // Single response only
-            stopSequences: [], // No custom stop sequences
-            presencePenalty: 0.0, // Don't penalize topic repetition
-            frequencyPenalty: 0.0, // Don't penalize word repetition
-        },
-        tools: [tools],
-        system_instruction: {
-            parts: [{ text: systemInstruction }]
-        },
-        // Safety settings to prevent inappropriate content
-        safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }
-        ]
-    });
+    const generationConfig = {
+        maxOutputTokens: 1024,
+        temperature: 0.2,
+        topP: 0.8,
+        topK: 10,
+        candidateCount: 1,
+        stopSequences: [],
+        presencePenalty: 0.0,
+        frequencyPenalty: 0.0,
+    };
+
+    const safetySettings = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }
+    ];
+
+    return {
+        startChat: (chatOptions) => {
+            return vertex_ai.chats.create({
+                model: model,
+                history: chatOptions.history,
+                config: {
+                    ...generationConfig,
+                    safetySettings: safetySettings,
+                    tools: [tools],
+                    systemInstruction: { parts: [{ text: systemInstruction }] }
+                }
+            });
+        }
+    };
 }
 
 // Function to switch to fallback model
-function switchToFallbackModel() {
+function switchToFallbackModel(error) {
+    if (error) {
+        console.error(`[MODEL_SWITCH] Error with ${model}:`, error.message);
+    }
     if (currentModelIndex < MODEL_PRIORITY.length - 1) {
         currentModelIndex++;
         model = MODEL_PRIORITY[currentModelIndex];
-        console.log(`Switching to fallback model: ${model}`);
+        console.log(`[MODEL_SWITCH] Switching to fallback model: ${model}`);
         return true;
     }
     console.error('All models exhausted, no fallback available');
@@ -1829,11 +1926,58 @@ app.post('/api/chat', async (req, res) => {
         let messageToSend = message;
         let contextPrefix = '';
         
-        // Only add date context for date-related queries
-        const isDateRelated = /\b(schedule|viewing|visit|when|date|time|tomorrow|today|next week|besok|kapan|tanggal|jadwal)\b/i.test(message);
-        if (isDateRelated) {
-            const now = new Date();
-            contextPrefix += `[DATE: ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}]\n`;
+        // Add page context if available (URL or Property ID)
+        if (currentPropertyId || currentUrl) {
+            let pageContext = `[PAGE CONTEXT] User is currently viewing a page.`;
+            if (currentPropertyId) {
+                pageContext += ` Property ID: ${currentPropertyId}.`;
+            }
+            if (currentUrl) {
+                pageContext += ` URL: ${currentUrl}.`;
+                
+                // Try to extract ID from URL if not explicitly provided
+                if (!currentPropertyId) {
+                    const urlParts = currentUrl.split('/');
+                    // Common pattern: /properti/123456/slug
+                    const propertiIndex = urlParts.indexOf('properti');
+                    if (propertiIndex !== -1 && urlParts[propertiIndex + 1]) {
+                        const extractedId = urlParts[propertiIndex + 1];
+                        pageContext += ` Extracted Property ID from URL: ${extractedId}.`;
+                    }
+                }
+            }
+            pageContext += ` If user says "this property" or "schedule viewing", assume they mean this Property ID.`;
+            contextPrefix += pageContext + '\n';
+        }
+        
+        // Get current date/time for context
+        const now = new Date();
+        const currentDateStr = now.toLocaleDateString('en-US', { 
+            weekday: 'long',
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toLocaleDateString('en-US', { 
+            weekday: 'long',
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        // Add date context for date-related queries OR any conversation that might involve scheduling
+        const isDateRelated = /\b(schedule|viewing|visit|when|date|time|tomorrow|today|next|besok|kapan|tanggal|jadwal|lusa|minggu)\b/i.test(message);
+        const conversationMentionsScheduling = (history || []).some(h => {
+            const text = typeof h.parts === 'string' ? h.parts : (h.parts?.[0]?.text || '');
+            return /\b(schedule|viewing|visit|tomorrow|besok|jadwal)\b/i.test(text);
+        });
+        
+        if (isDateRelated || conversationMentionsScheduling) {
+            contextPrefix += `[CURRENT DATE: ${currentDateStr}]\n`;
+            contextPrefix += `[TOMORROW IS: ${tomorrowStr}]\n`;
+            contextPrefix += `[IMPORTANT: When user says "tomorrow", use ${tomorrow.toISOString().split('T')[0]}]\n`;
         }
         
         // Add page context only if property ID is present
@@ -1904,9 +2048,9 @@ app.post('/api/chat', async (req, res) => {
                 });
 
                 console.log(`[${tenantId}] Sending message to model ${model}...`);
-                result = await chat.sendMessage(messageToSend);
+                response = await chat.sendMessage({ message: messageToSend });
                 console.log(`[${tenantId}] Model response received in ${Date.now() - startTime}ms`);
-                response = await result.response;
+                // response = await result.response; // Updated for @google/genai SDK
                 
                 // Track token usage
                 const usageMetadata = response.usageMetadata;
@@ -1918,19 +2062,26 @@ app.post('/api/chat', async (req, res) => {
             } catch (modelError) {
                 console.error(`[${tenantId}] Model error with ${model}:`, modelError.message);
                 
-                // Check for quota/resource exhaustion errors
-                if (modelError.message?.includes('quota') || modelError.message?.includes('RESOURCE_EXHAUSTED')) {
-                    if (switchToFallbackModel()) {
+                // Check for quota/resource exhaustion errors OR 404 Not Found (Model not available) OR 400 Invalid Argument
+                if (modelError.message?.includes('quota') || 
+                    modelError.message?.includes('RESOURCE_EXHAUSTED') ||
+                    modelError.message?.includes('Not Found') || 
+                    modelError.message?.includes('404') ||
+                    modelError.message?.includes('Publisher Model') ||
+                    modelError.message?.includes('400') ||
+                    modelError.message?.includes('INVALID_ARGUMENT')
+                   ) {
+                    if (switchToFallbackModel(modelError)) {
                         retries++;
                         console.log(`[${tenantId}] Retrying with fallback model (${retries}/${maxRetries})...`);
                         continue;
                     }
                 }
-                throw modelError; // Re-throw if not a quota error or no fallback
+                throw modelError; // Re-throw if not a recoverable error or no fallback
             }
         }
         
-        const candidates = response.candidates;
+        let candidates = response.candidates;
 
         if (!candidates || candidates.length === 0) {
             // Return Indonesian error message with self-introspection
@@ -1946,28 +2097,27 @@ app.post('/api/chat', async (req, res) => {
             });
         }
 
-        const firstCandidate = candidates[0];
-        const content = firstCandidate.content;
-        const parts = content.parts;
+        let firstCandidate = candidates[0];
+        let content = firstCandidate.content;
+        let parts = content.parts;
 
         // Check for function calls
-        const functionCalls = parts.filter(part => part.functionCall);
+        let functionCalls = parts.filter(part => part.functionCall);
         
         // ANTI-HALLUCINATION: Detect if model answered property query without searching
-        const textParts = parts.filter(part => part.text);
+        let textParts = parts.filter(part => part.text);
         if (textParts.length > 0 && functionCalls.length === 0) {
             const responseText = textParts.map(p => p.text).join(' ');
-            const isPropertyQuery = /(?:cari|looking for|search|find|mau|ingin|need|butuh).*(?:rumah|house|apartemen|apartment|properti|property|ruko|shophouse|tanah|land)/i.test(message);
-            const containsPropertyInfo = /(?:rumah|house|apartment|apartemen|ruko|properti|property).*(?:harga|price|lokasi|location|kamar|bedroom|dijual|for sale|disewa|for rent)/i.test(responseText);
             
-            if (isPropertyQuery && containsPropertyInfo && chatHistory.length < 3) {
+            // Expanded detection for property queries including refinements
+            const isPropertyQuery = /(?:cari|looking for|search|find|mau|ingin|need|butuh|show|lihat|tampilkan).*(?:rumah|house|apartemen|apartment|properti|property|ruko|shophouse|tanah|land|ones|yang|lain|more|lagi|cheaper|murah|expensive|mahal|under|bawah|budget)/i.test(message);
+            
+            // Expanded detection for property info in response
+            const containsPropertyInfo = /(?:rumah|house|apartment|apartemen|ruko|properti|property|ID:|Price:|Harga:|Rp\.|Location:|Lokasi:).*(?:harga|price|lokasi|location|kamar|bedroom|dijual|for sale|disewa|for rent|ID:|Rp\.)/i.test(responseText);
+            
+            if (isPropertyQuery && containsPropertyInfo) {
                 // Model is answering property query WITHOUT searching - major hallucination risk
                 console.warn(`[${tenantId}] ⚠️ HALLUCINATION RISK: Model answered property query without using search tools!`);
-                
-                // Force it to search by responding
-                const forceSearchMessage = detectedLanguage === 'id' 
-                    ? 'Maaf, saya harus mencari properti yang tepat untuk Anda. Izinkan saya mencari sekarang...'
-                    : 'Let me search for the right properties for you...';
                 
                 // Log this incident
                 try {
@@ -1985,11 +2135,27 @@ app.post('/api/chat', async (req, res) => {
                     console.error('Failed to log no-tool-usage warning:', error);
                 }
                 
-                // Return response that forces proper behavior
-                return res.json({
-                    text: forceSearchMessage + '\n\n' + responseText.substring(0, 100) + '...',
-                    requiresSearch: true
-                });
+                // RETRY LOGIC: Force the model to use the tool
+                console.log(`[${tenantId}] 🔄 RETRYING with forced tool use...`);
+                
+                const retryMessage = "SYSTEM: You failed to use the search_properties tool. You MUST use the search_properties tool to find real listings. Do not hallucinate listings. Search for: " + message;
+                
+                try {
+                    const retryResult = await chat.sendMessage(retryMessage);
+                    
+                    // Update variables with new result
+                    candidates = retryResult.response.candidates;
+                    firstCandidate = candidates[0];
+                    content = firstCandidate.content;
+                    parts = content.parts;
+                    functionCalls = parts.filter(part => part.functionCall);
+                    textParts = parts.filter(part => part.text);
+                    
+                    console.log(`[${tenantId}] Retry result: functionCalls=${functionCalls.length}`);
+                } catch (retryError) {
+                    console.error(`[${tenantId}] Retry failed:`, retryError);
+                    // Fallback to original response if retry fails
+                }
             }
         }
 
@@ -2027,7 +2193,19 @@ app.post('/api/chat', async (req, res) => {
                     
                     results = results.filter(p => {
                         const searchText = `${p.location || ''} ${p.title || ''} ${p.description || ''} ${p.poi || ''}`.toLowerCase();
-                        return locVariants.some(variant => searchText.includes(variant));
+                        
+                        return locVariants.some(variant => {
+                            // Exact match attempt
+                            if (searchText.includes(variant)) return true;
+                            
+                            // Token-based match (all words must be present)
+                            // This handles cases like "bungur besar kemayoran" matching "bungur besar, kemayoran"
+                            const tokens = variant.split(/[\s,]+/).filter(t => t.length > 2); 
+                            if (tokens.length > 1) {
+                                return tokens.every(token => searchText.includes(token));
+                            }
+                            return false;
+                        });
                     });
                     console.log(`[${tenantId}] After location filter: ${results.length} properties`);
                 }
@@ -2057,10 +2235,14 @@ app.post('/api/chat', async (req, res) => {
                         if (category === 'rumah') {
                             // For house, include "rumah" but exclude apartments, shophouses, etc.
                             const hasRumah = textToSearch.includes('rumah');
+                            
+                            // Special case: "hitung tanah" (sold for land value) is still a house listing usually
+                            const isHitungTanah = textToSearch.includes('hitung tanah');
+                            
                             const hasExclusions = textToSearch.includes('apartemen') || 
                                                  textToSearch.includes('ruko') || 
                                                  textToSearch.includes('gedung') || 
-                                                 textToSearch.includes('tanah');
+                                                 (textToSearch.includes('tanah') && !isHitungTanah);
                             return hasRumah && !hasExclusions;
                         } else if (category === 'apartemen') {
                             return textToSearch.includes('apartemen');
@@ -2300,17 +2482,21 @@ app.post('/api/chat', async (req, res) => {
                     }
                 }
 
+                // Strip URLs from properties sent to model to prevent it from including them in text
+                // We still send the full properties object to the frontend in res.json
+                const propertiesForModel = topResults.map(({ url, imageUrl, ...rest }) => rest);
+
                 const functionResponse = {
                     functionResponse: {
                         name: 'search_properties',
                         response: {
-                            properties: topResults
+                            properties: propertiesForModel
                         }
                     }
                 };
 
-                const result2 = await chat.sendMessage([functionResponse]);
-                const response2 = await result2.response;
+                const result2 = await chat.sendMessage({ message: [functionResponse] });
+                const response2 = result2;
                 let textResponse = response2.candidates[0].content.parts[0].text;
 
                 // Append fallback message if we showed alternative property types
@@ -2381,8 +2567,8 @@ app.post('/api/chat', async (req, res) => {
                             }
                         }
                     };
-                    const result2 = await chat.sendMessage([functionResponse]);
-                    const response2 = await result2.response;
+                    const result2 = await chat.sendMessage({ message: [functionResponse] });
+                    const response2 = result2;
                     const textResponse = response2.candidates[0].content.parts[0].text;
                     res.json({ text: textResponse, properties: [] });
                     return;
@@ -2609,8 +2795,8 @@ app.post('/api/chat', async (req, res) => {
                     }
                 };
 
-                const result2 = await chat.sendMessage([functionResponse]);
-                const response2 = await result2.response;
+                const result2 = await chat.sendMessage({ message: [functionResponse] });
+                const response2 = result2;
                 const textResponse = response2.candidates[0].content.parts[0].text;
 
                 // ANTI-HALLUCINATION: Validate office database response
@@ -2699,8 +2885,8 @@ app.post('/api/chat', async (req, res) => {
                     }
                 };
 
-                const result2 = await chat.sendMessage([functionResponse]);
-                const response2 = await result2.response;
+                const result2 = await chat.sendMessage({ message: [functionResponse] });
+                const response2 = result2;
                 const textResponse = response2.candidates[0].content.parts[0].text;
 
                 res.json({ text: textResponse });
@@ -2756,8 +2942,8 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
                         }
                     };
 
-                    const result2 = await chat.sendMessage([functionResponse]);
-                    const response2 = await result2.response;
+                    const result2 = await chat.sendMessage({ message: [functionResponse] });
+                    const response2 = result2;
                     const textResponse = response2.candidates[0].content.parts[0].text;
 
                     res.json({ text: textResponse });
@@ -2775,8 +2961,8 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
                         }
                     };
 
-                    const result2 = await chat.sendMessage([functionResponse]);
-                    const response2 = await result2.response;
+                    const result2 = await chat.sendMessage({ message: [functionResponse] });
+                    const response2 = result2;
                     const textResponse = response2.candidates[0].content.parts[0].text;
 
                     res.json({ text: textResponse });
@@ -2785,13 +2971,32 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
             }
             else if (functionCall.name === 'schedule_viewing') {
                 const args = functionCall.args;
-                console.log(`[${tenantId}] Scheduling viewing with args:`, args);
+                console.log(`[${tenantId}] ========================================`);
+                console.log(`[${tenantId}] 📅 SCHEDULE_VIEWING FUNCTION CALLED`);
+                console.log(`[${tenantId}] Args:`, JSON.stringify(args, null, 2));
+                console.log(`[${tenantId}] ========================================`);
                 try {
                     // Minimal validation - required fields are enforced by tool definition, but double-check
-                    const { property_id, visitor_name, visitor_email, visitor_phone, preferred_date, preferred_time, message } = args || {};
+                    const { property_id, visitor_name, visitor_email, visitor_phone, preferred_date, preferred_time, message: viewingMessage } = args || {};
                     if (!property_id || !visitor_name || !visitor_email || !visitor_phone || !preferred_date || !preferred_time) {
                         throw new Error('Missing required field for scheduling');
                     }
+
+                    // Build full conversation context for date validation
+                    // Include current message + all history to catch "tomorrow" said earlier
+                    const currentMessage = req.body.message || '';
+                    const historyMessages = (req.body.history || [])
+                        .map(h => {
+                            if (typeof h.parts === 'string') return h.parts;
+                            if (Array.isArray(h.parts)) return h.parts.map(p => p.text || '').join(' ');
+                            return '';
+                        })
+                        .join(' ');
+                    const fullConversationContext = `${historyMessages} ${currentMessage}`;
+                    
+                    // Validate and correct the date (prevents AI hallucination of dates)
+                    const correctedDate = validateAndCorrectDate(preferred_date, fullConversationContext);
+                    console.log(`[${tenantId}] 📅 Date: Original="${preferred_date}" -> Corrected="${correctedDate}"`);
 
                     // Get tenant properties to find the requested property
                     const tenantProps = await getPropertiesForTenant(tenantId);
@@ -2812,9 +3017,9 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
                         propertyTitle,
                         propertyUrl,
                         propertyImage,
-                        date: preferred_date,
+                        date: correctedDate,
                         time: preferred_time,
-                        message,
+                        message: viewingMessage,
                         agentName,
                         agentPhone
                     });
@@ -2827,35 +3032,43 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
                         propertyTitle,
                         propertyUrl,
                         propertyId: property_id,
-                        date: preferred_date,
+                        date: correctedDate,
                         time: preferred_time,
-                        message,
+                        message: viewingMessage,
                         leadType: 'viewing'
                     });
 
                     // Send confirmation to visitor
-                    await sendEmail({ 
-                        to: visitor_email, 
-                        subject, 
-                        text: `Thank you ${visitor_name},\n\nYour viewing request for ${propertyTitle} has been confirmed.\nDate: ${preferred_date}\nTime: ${preferred_time}\n\nOur agent will contact you shortly to confirm.\n\nBest regards,\nRay White Team`,
-                        html: visitorHTML
-                    });
-                    
-                    console.log(`[${tenantId}] Viewing confirmation sent to ${visitor_email}`);
+                    try {
+                        await sendEmail({ 
+                            to: visitor_email, 
+                            subject, 
+                            text: `Thank you ${visitor_name},\n\nYour viewing request for ${propertyTitle} has been confirmed.\nDate: ${correctedDate}\nTime: ${preferred_time}\n\nOur agent will contact you shortly to confirm.\n\nBest regards,\nRay White Team`,
+                            html: visitorHTML
+                        });
+                        console.log(`[${tenantId}] ✓ Viewing confirmation sent to ${visitor_email}`);
+                    } catch (emailError) {
+                        console.error(`[${tenantId}] ✗ Failed to send visitor email to ${visitor_email}:`, emailError.message);
+                        // Continue even if visitor email fails
+                    }
 
                     // Send lead notification to agent
                     if (agentEmail) {
-                        await sendEmail({ 
-                            to: agentEmail, 
-                            subject: `🔥 New Viewing Request: ${propertyTitle}`,
-                            text: `New viewing request:\n\nVisitor: ${visitor_name}\nEmail: ${visitor_email}\nPhone: ${visitor_phone}\nProperty: ${propertyTitle}\nDate: ${preferred_date}\nTime: ${preferred_time}\n\nMessage: ${message || 'N/A'}`,
-                            html: agentHTML
-                        });
-                        
-                        console.log(`[${tenantId}] Viewing notification sent to agent ${agentEmail}`);
+                        try {
+                            await sendEmail({ 
+                                to: agentEmail, 
+                                subject: `🔥 New Viewing Request: ${propertyTitle}`,
+                                text: `New viewing request:\n\nVisitor: ${visitor_name}\nEmail: ${visitor_email}\nPhone: ${visitor_phone}\nProperty: ${propertyTitle}\nDate: ${correctedDate}\nTime: ${preferred_time}\n\nMessage: ${viewingMessage || 'N/A'}`,
+                                html: agentHTML
+                            });
+                            console.log(`[${tenantId}] ✓ Viewing notification sent to agent ${agentEmail}`);
+                        } catch (emailError) {
+                            console.error(`[${tenantId}] ✗ Failed to send agent email to ${agentEmail}:`, emailError.message);
+                            // Continue even if agent email fails
+                        }
                     }
 
-                    const responseText = `Perfect! I've scheduled your viewing for ${propertyTitle} on ${preferred_date} at ${preferred_time}. You'll receive a confirmation email shortly, and our agent will contact you to finalize the details. Looking forward to showing you the property! 🏡`;
+                    const responseText = `Perfect! I've scheduled your viewing for ${propertyTitle} on ${correctedDate} at ${preferred_time}. You'll receive a confirmation email shortly, and our agent will contact you to finalize the details. Looking forward to showing you the property! 🏡`;
                     res.json({ text: responseText });
                     return;
                 } catch (err) {

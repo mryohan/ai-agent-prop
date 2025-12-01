@@ -35,7 +35,7 @@ async function scrapeProperties() {
             const $ = cheerio.load(response.data);
             let pageProps = 0;
 
-            $('a[href*="/properti/"]').each((i, element) => {
+            $('a[href*="/properti/"], a[href*="/buy/"], a[href*="/rent/"]').each((i, element) => {
                 const href = $(element).attr('href');
                 const fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href}`;
 
@@ -57,15 +57,19 @@ async function scrapeProperties() {
                     const title = lines[0];
                     const location = lines[1];
                     const priceLine = lines.find(l => l.includes('Rp.'));
+                    
+                    // Extract ID from URL (last segment)
+                    const urlParts = href.split('/').filter(p => p);
+                    const id = urlParts[urlParts.length - 1];
 
                     properties.push({
-                        id: href.split('/')[4],
+                        id: id,
                         title: title,
                         location: location,
                         price: priceLine || 'Contact for price',
                         url: fullUrl,
                         imageUrl: imageUrl || 'https://via.placeholder.com/150',
-                        type: title.toLowerCase().includes('sewa') ? 'Rent' : 'Sale',
+                        type: (title.toLowerCase().includes('sewa') || href.includes('/rent/')) ? 'Rent' : 'Sale',
                         description: '', // To be filled
                         poi: '' // To be filled
                     });

@@ -6,4 +6,4 @@ coverage
 .gitignore
 *.md
 cloudbuild.yaml
-properties.json
+

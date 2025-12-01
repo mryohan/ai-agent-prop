@@ -64,12 +64,19 @@ Traditional real estate websites require users to manually filter through proper
 - **Severity-Based Blocking**: Critical/High threats blocked, Medium logged
 - **Security Dashboard**: Real-time monitoring with incident tracking
 
+### 🧠 Context Intelligence & Page Awareness
+- **URL Context Injection**: Automatically detects Property IDs from the user's current URL
+- **Seamless "This Property" Queries**: Users can say "schedule a viewing for this property" without specifying the ID
+- **Cross-Turn Memory**: Remembers property context across multiple conversational turns
+- **Smart Refinement**: Handles follow-up queries like "show me cheaper ones" by maintaining search context
+
 ### 🧠 Anti-Hallucination Framework
-- **4-Layer Protection System**:
+- **5-Layer Protection System**:
   1. **Model Configuration**: Low temperature (0.2), focused sampling (top_p=0.8)
   2. **System Instructions**: Strict rules against fabricating data
   3. **Response Validation**: Real-time checks against tool outputs
   4. **Tool Enforcement**: Must use search tools before answering
+  5. **Server-Side Auto-Correction**: Automatically detects if model answers from memory and forces a retry with proper tool usage
 - **Validation Checks**: Property count, price accuracy, feature verification
 - **Feedback Loop**: RAG system learns from user corrections
 
@@ -146,16 +153,17 @@ Traditional real estate websites require users to manually filter through proper
 
 ### Data Flow
 
-1. **User Input** → Chat widget sends message with tenant ID and page context
-2. **Security Check** → 6-category threat detection (blocks malicious inputs)
-3. **Language Detection** → Identifies English/Indonesian for consistent responses
-4. **Context Enhancement** → Adds current date, property ID, feedback history
+1. **User Input** → Chat widget sends message with tenant ID and page context (URL)
+2. **Context Injection** → Server extracts Property ID from URL and prepends to prompt
+3. **Security Check** → 6-category threat detection (blocks malicious inputs)
+4. **Language Detection** → Identifies English/Indonesian for consistent responses
 5. **Vertex AI Processing** → Gemini 2.0 with function calling
 6. **Tool Execution** → Searches properties with priority hierarchy
-7. **Response Validation** → Anti-hallucination checks against actual data
-8. **Sanitization** → Removes PII, competitor links, credentials
-9. **Email Automation** → Sends confirmations and notifications
-10. **Analytics Logging** → Tracks usage, errors, security incidents
+7. **Auto-Correction** → If tool is skipped for property queries, server forces a retry
+8. **Response Validation** → Anti-hallucination checks against actual data
+9. **Sanitization** → Removes PII, competitor links, credentials
+10. **Email Automation** → Sends confirmations and notifications
+11. **Analytics Logging** → Tracks usage, errors, security incidents
 
 ---
 
@@ -376,6 +384,8 @@ Agent: [Sends confirmation emails to visitor and agent]
 
 ✅ **Multi-Agent Coordination**: Priority-based search across personal, office, and national databases  
 ✅ **Advanced Tool Usage**: 5 integrated tools for search, scheduling, and communication  
+✅ **Self-Healing Logic**: Server-side retry mechanism automatically fixes missing tool calls  
+✅ **Context Injection**: URL-aware prompting for seamless user experience  
 ✅ **Error Handling**: Graceful fallbacks, model switching, retry logic  
 ✅ **Security**: 6-category threat detection with real-time blocking  
 ✅ **Scalability**: Auto-scaling Cloud Run deployment  
@@ -384,9 +394,10 @@ Agent: [Sends confirmation emails to visitor and agent]
 
 ### Technical Innovation
 
-🎯 **Anti-Hallucination System**: 4-layer validation prevents AI fabrication  
+🎯 **Anti-Hallucination System**: 5-layer validation with auto-retry prevents AI fabrication  
 🔒 **Security Framework**: PII protection, prompt injection defense, sanitization  
 🌐 **Multilingual**: Native English/Indonesian with cultural understanding  
+🧠 **Context Awareness**: Injects page-level context (URL/ID) into the prompt stream  
 📧 **Automation**: HTML email templates with property images  
 📊 **Analytics**: Token tracking, performance metrics, user engagement  
 🧠 **Learning**: RAG-based feedback system improves over time  
