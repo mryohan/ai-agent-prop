@@ -2,11 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Run-4285F4?logo=google-cloud)](https://cloud.google.com/run)
-[![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%202.0-00897B?logo=google)](https://cloud.google.com/vertex-ai)
+[![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%202.5-00897B?logo=google)](https://cloud.google.com/vertex-ai)
 
 > **Kaggle Competition Submission**: Agents Intensive Capstone Project - Enterprise Track
 
-An enterprise-grade conversational AI agent for real estate property search, built with Google Cloud Vertex AI Gemini 2.0. Features multi-tenant architecture, advanced security, anti-hallucination systems, and comprehensive automation for property recommendations and viewings.
+An enterprise-grade conversational AI agent for real estate property search, built with Google Cloud Vertex AI Gemini 2.5. Features multi-tenant architecture, advanced security, anti-hallucination systems, and comprehensive automation for property recommendations and viewings.
 
 ---
 
@@ -125,7 +125,7 @@ Traditional real estate websites require users to manually filter through proper
         ▼               ▼               ▼
 ┌──────────────┐ ┌─────────────┐ ┌──────────────┐
 │  Vertex AI   │ │   Firestore │ │     GCS      │
-│  Gemini 2.0  │ │  (NoSQL DB) │ │  (Storage)   │
+│  Gemini 2.5  │ │  (NoSQL DB) │ │  (Storage)   │
 │              │ │             │ │              │
 │ - Chat       │ │ - Feedback  │ │ - Properties │
 │ - Function   │ │ - Security  │ │ - Hierarchy  │
@@ -157,7 +157,7 @@ Traditional real estate websites require users to manually filter through proper
 2. **Context Injection** → Server extracts Property ID from URL and prepends to prompt
 3. **Security Check** → 6-category threat detection (blocks malicious inputs)
 4. **Language Detection** → Identifies English/Indonesian for consistent responses
-5. **Vertex AI Processing** → Gemini 2.0 with function calling
+5. **Vertex AI Processing** → Gemini 2.5 with function calling
 6. **Tool Execution** → Searches properties with priority hierarchy
 7. **Auto-Correction** → If tool is skipped for property queries, server forces a retry
 8. **Response Validation** → Anti-hallucination checks against actual data
@@ -191,14 +191,14 @@ Traditional real estate websites require users to manually filter through proper
 - **System Instructions**: 800 tokens (reduced from 3,000 - 73% optimization)
 - **Context Overhead**: 50-200 tokens per request (conditional injection)
 - **Average Total**: 1,200 tokens per request (input + output)
-- **Cost Efficiency**: $0.15 per 1,000 conversations (Gemini 2.0 Flash pricing)
+- **Cost Efficiency**: $0.15 per 1,000 conversations (Gemini 2.5 Flash Lite pricing)
 
 ---
 
 ## 🛠️ Technology Stack
 
 ### Core Technologies
-- **AI Model**: Google Vertex AI Gemini 2.0 Flash (gemini-2.0-flash-exp)
+- **AI Model**: Google Vertex AI Gemini 2.5 Flash Lite (gemini-2.5-flash-lite)
 - **Backend**: Node.js 20 + Express.js
 - **Deployment**: Google Cloud Run (Containerized)
 - **Database**: Google Firestore (Native Mode)
@@ -206,7 +206,7 @@ Traditional real estate websites require users to manually filter through proper
 - **Email**: Brevo API (formerly SendinBlue)
 
 ### Key Libraries
-- `@google-cloud/vertexai` - AI model integration
+- `@google/genai` - Google Gen AI SDK (replaces deprecated Vertex AI SDK)
 - `@google-cloud/firestore` - NoSQL database
 - `@google-cloud/storage` - Object storage
 - `express` - Web framework
@@ -490,7 +490,7 @@ This project is licensed under the MIT License.
 
 ## 🙏 Acknowledgments
 
-- **Google Cloud**: Vertex AI Gemini 2.0, Cloud Run, Firestore
+- **Google Cloud**: Vertex AI Gemini 2.5, Cloud Run, Firestore
 - **Ray White Indonesia**: Real estate domain expertise
 - **Kaggle**: AI Agents Intensive program and competition
 
