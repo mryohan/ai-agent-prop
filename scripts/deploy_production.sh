@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-#!/usr/bin/env bash
-set -euo pipefail
-
 # Usage: ./scripts/deploy_production.sh PROJECT_ID IMAGE_TAG GS_BUCKET PROPERTIES_STORE [SENDGRID_SECRET_NAME] [REGION]
 PROJECT_ID=${1:-}
 IMAGE_TAG=${2:-latest}
@@ -38,18 +35,25 @@ docker push $IMAGE
 
 SERVICE_ACCOUNT=ai-agent-prop-sa@${PROJECT_ID}.iam.gserviceaccount.com
 
-# Construct env vars string
-ENV_VARS="GOOGLE_CLOUD_PROJECT_ID=${PROJECT_ID},PROPERTIES_STORE=${PROPERTIES_STORE},PROPERTIES_GCS_BUCKET=${GS_BUCKET},PROPERTIES_GCS_PATH=properties.json,MULTI_TENANT_MODE=true"
+# Create a temp file for env vars to safely handle spaces and special characters
+ENV_FILE="env_vars_$(date +%s).yaml"
+cat > "$ENV_FILE" <<EOF
+GOOGLE_CLOUD_PROJECT_ID: "${PROJECT_ID}"
+PROPERTIES_STORE: "${PROPERTIES_STORE}"
+PROPERTIES_GCS_BUCKET: "${GS_BUCKET}"
+PROPERTIES_GCS_PATH: "properties.json"
+MULTI_TENANT_MODE: "true"
+EOF
 
 # Add Email Config if present
-if [ -n "${EMAIL_PROVIDER:-}" ]; then ENV_VARS="${ENV_VARS},EMAIL_PROVIDER=${EMAIL_PROVIDER}"; fi
-if [ -n "${EMAIL_PROVIDER_ENDPOINT:-}" ]; then ENV_VARS="${ENV_VARS},EMAIL_PROVIDER_ENDPOINT=${EMAIL_PROVIDER_ENDPOINT}"; fi
-if [ -n "${EMAIL_FROM:-}" ]; then ENV_VARS="${ENV_VARS},EMAIL_FROM=${EMAIL_FROM}"; fi
-if [ -n "${BREVO_API_KEY:-}" ]; then ENV_VARS="${ENV_VARS},BREVO_API_KEY=${BREVO_API_KEY}"; fi
-if [ -n "${AGENT_NOTIFICATION_EMAIL:-}" ]; then ENV_VARS="${ENV_VARS},AGENT_NOTIFICATION_EMAIL=${AGENT_NOTIFICATION_EMAIL}"; fi
-if [ -n "${AGENT_NAME:-}" ]; then ENV_VARS="${ENV_VARS},AGENT_NAME=${AGENT_NAME}"; fi
-if [ -n "${AGENT_PHONE:-}" ]; then ENV_VARS="${ENV_VARS},AGENT_PHONE=${AGENT_PHONE}"; fi
-if [ -n "${ADMIN_KEY:-}" ]; then ENV_VARS="${ENV_VARS},ADMIN_KEY=${ADMIN_KEY}"; fi
+if [ -n "${EMAIL_PROVIDER:-}" ]; then echo "EMAIL_PROVIDER: \"${EMAIL_PROVIDER}\"" >> "$ENV_FILE"; fi
+if [ -n "${EMAIL_PROVIDER_ENDPOINT:-}" ]; then echo "EMAIL_PROVIDER_ENDPOINT: \"${EMAIL_PROVIDER_ENDPOINT}\"" >> "$ENV_FILE"; fi
+if [ -n "${EMAIL_FROM:-}" ]; then echo "EMAIL_FROM: \"${EMAIL_FROM}\"" >> "$ENV_FILE"; fi
+if [ -n "${BREVO_API_KEY:-}" ]; then echo "BREVO_API_KEY: \"${BREVO_API_KEY}\"" >> "$ENV_FILE"; fi
+if [ -n "${AGENT_NOTIFICATION_EMAIL:-}" ]; then echo "AGENT_NOTIFICATION_EMAIL: \"${AGENT_NOTIFICATION_EMAIL}\"" >> "$ENV_FILE"; fi
+if [ -n "${AGENT_NAME:-}" ]; then echo "AGENT_NAME: \"${AGENT_NAME}\"" >> "$ENV_FILE"; fi
+if [ -n "${AGENT_PHONE:-}" ]; then echo "AGENT_PHONE: \"${AGENT_PHONE}\"" >> "$ENV_FILE"; fi
+if [ -n "${ADMIN_KEY:-}" ]; then echo "ADMIN_KEY: \"${ADMIN_KEY}\"" >> "$ENV_FILE"; fi
 
 echo "Deploying Cloud Run service to region ${REGION}..."
 gcloud run deploy ai-agent-prop \
@@ -58,8 +62,11 @@ gcloud run deploy ai-agent-prop \
   --platform managed \
   --service-account ${SERVICE_ACCOUNT} \
   --allow-unauthenticated \
-  --set-env-vars "${ENV_VARS}" \
+  --env-vars-file "$ENV_FILE" \
   ${SENDGRID_SECRET_NAME:+--update-secrets SENDGRID_API_KEY=${SENDGRID_SECRET_NAME}:latest} \
   --project=$PROJECT_ID
+
+# Cleanup
+rm "$ENV_FILE"
 
 echo "Deployment complete. Run the service or open Cloud Run URL to verify."
