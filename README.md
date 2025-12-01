@@ -27,7 +27,9 @@ An enterprise-grade conversational AI agent for real estate property search, bui
 
 Ray White AI Agent is a production-ready enterprise solution that transforms real estate property search through intelligent conversation. The system handles multiple real estate offices (multi-tenant), prevents AI hallucinations, blocks security threats, and provides seamless property discovery with automated email notifications.
 
-**Live Demo**: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
+**Live Demo**: 
+- [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
+- [https://aldilawibowo.raywhite.co.id](https://aldilawibowo.raywhite.co.id)
 
 ### Problem Statement
 Real estate agents miss 40% of calls and take hours to respond to leads. Existing chatbots are rigid and hallucinate property details. This agent solves these issues by providing accurate, 24/7 instant responses and automating the scheduling process.
@@ -257,7 +259,8 @@ Comprehensive guides included in the repository:
 ## 🎬 Demo
 
 ### Live System
-**URL**: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
+**URL Agent 1**: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
+**URL Agent 2**: [https://aldilawibowo.raywhite.co.id](https://aldilawibowo.raywhite.co.id)
 
 ### Chat Widget
 The chat widget can be embedded on any website:
@@ -400,11 +403,12 @@ Properties are stored as JSON arrays:
 ## 🤝 Contributing
 
 This project is supported by these people.
-**Agents**: cernan.lantang@raywhite.co.id and aldila.wibowo@raywhite.co.id
+**Real Estate Agents**: cernan.lantang@raywhite.co.id and aldila.wibowo@raywhite.co.id
 
 For inquiries or collaboration:
 - **GitHub**: [mryohan/ai-agent-prop](https://github.com/mryohan/ai-agent-prop)
-- **Email**: yohannes.siregar@raywhite.co.id and siryohannes89@gmail.com
+- **Email**: yohannes.siregar@raywhite.co.id 
+- **LinkedIn**: [linkedin.com/in/yohannessiregar](http://linkedin.com/in/yohannessiregar)
 
 ---
 
@@ -431,7 +435,8 @@ Create an issue on [GitHub Issues](https://github.com/mryohan/ai-agent-prop/issu
 Refer to the comprehensive guides in the repository
 
 ### Live Demo
-Test the system at: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
+Test the system at: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id) and [https://aldilawibowo.raywhite.co.id](https://aldilawibowo.raywhite.co.id)
+
 
 ---
 
