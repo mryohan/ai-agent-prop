@@ -1015,7 +1015,7 @@ app.post('/admin/tenant/register', async (req, res) => {
         return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const { tenantId, websiteUrl, officeId, agentName } = req.body;
+    const { tenantId, websiteUrl, officeId, agentName, isOffice } = req.body;
 
     if (!tenantId || !websiteUrl) {
         return res.status(400).json({ error: 'Missing tenantId or websiteUrl' });
@@ -1024,12 +1024,24 @@ app.post('/admin/tenant/register', async (req, res) => {
     console.log(`[ADMIN] Registering new tenant: ${tenantId} (${websiteUrl})`);
 
     // 1. Update Office Hierarchy
+    const hierarchyData = {
+        office: officeId || null,
+        national: 'www.raywhite.co.id',
+        isOffice: !!isOffice // Flag to identify if this tenant is an office itself
+    };
+    
+    officeHierarchy[tenantId] = hierarchyData;
+    
+    // PERSISTENCE: Save hierarchy to Firestore
+    const firestore = new Firestore({ projectId: PROJECT_ID });
+    firestore.collection('tenant_hierarchy').doc(tenantId).set(hierarchyData, { merge: true })
+        .catch(err => console.error(`[PERSISTENCE] Failed to save hierarchy for ${tenantId}:`, err));
+        
     if (officeId) {
-        officeHierarchy[tenantId] = {
-            office: officeId,
-            national: 'www.raywhite.co.id'
-        };
         console.log(`[ADMIN] Linked ${tenantId} to office ${officeId}`);
+    }
+    if (isOffice) {
+        console.log(`[ADMIN] Registered ${tenantId} as an OFFICE`);
     }
 
     // 2. Trigger Scraper (Async)
@@ -1181,6 +1193,11 @@ app.post('/admin/hierarchy/:tenantId', (req, res) => {
         national: national || 'www.raywhite.co.id'
     };
     
+    // PERSISTENCE: Save hierarchy to Firestore
+    const firestore = new Firestore({ projectId: PROJECT_ID });
+    firestore.collection('tenant_hierarchy').doc(tenantId).set(officeHierarchy[tenantId], { merge: true })
+        .catch(err => console.error(`[PERSISTENCE] Failed to save hierarchy for ${tenantId}:`, err));
+    
     console.log(`[${tenantId}] Office hierarchy updated:`, officeHierarchy[tenantId]);
     
     res.json({
@@ -1286,7 +1303,7 @@ const cobrokerageConfig = new Map(); // tenant -> { enabled: boolean, sharedTena
 
 // Office hierarchy configuration
 // Maps individual agents to their office group and Ray White national database
-const officeHierarchy = {
+let officeHierarchy = {
     'cernanlantang.raywhite.co.id': {
         office: 'menteng.raywhite.co.id',
         national: 'www.raywhite.co.id'
@@ -1295,8 +1312,34 @@ const officeHierarchy = {
         office: 'signaturekuningan.com',
         national: 'www.raywhite.co.id'
     }
-    // Add more agents as needed
 };
+
+// PERSISTENCE: Load data from Firestore on startup
+async function loadPersistenceData() {
+    try {
+        const firestore = new Firestore({ projectId: PROJECT_ID });
+        
+        // 1. Load Token Usage
+        const usageSnapshot = await firestore.collection('tenant_usage').get();
+        usageSnapshot.forEach(doc => {
+            tokenUsageByTenant.set(doc.id, doc.data());
+        });
+        console.log(`[PERSISTENCE] Loaded token usage for ${usageSnapshot.size} tenants`);
+
+        // 2. Load Hierarchy
+        const hierarchySnapshot = await firestore.collection('tenant_hierarchy').get();
+        hierarchySnapshot.forEach(doc => {
+            officeHierarchy[doc.id] = doc.data();
+        });
+        console.log(`[PERSISTENCE] Loaded hierarchy for ${hierarchySnapshot.size} tenants`);
+        
+    } catch (error) {
+        console.error('[PERSISTENCE] Failed to load data:', error);
+    }
+}
+
+// Call immediately
+loadPersistenceData();
 
 // Backward compatibility: default tenant for single-tenant mode
 const DEFAULT_TENANT = 'default';
@@ -1347,6 +1390,11 @@ function trackTokenUsage(tenantId, inputTokens, outputTokens) {
     
     console.log(`[${tenantId}] Token usage: +${inputTokens} in, +${outputTokens} out | Total: ${usage.inputTokens + usage.outputTokens} tokens, $${usage.totalCost.toFixed(4)}`);
     
+    // PERSISTENCE: Save to Firestore (Fire-and-forget)
+    const firestore = new Firestore({ projectId: PROJECT_ID });
+    firestore.collection('tenant_usage').doc(tenantId).set(usage, { merge: true })
+        .catch(err => console.error(`[PERSISTENCE] Failed to save usage for ${tenantId}:`, err));
+
     return usage;
 }
 

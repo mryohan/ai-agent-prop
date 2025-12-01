@@ -463,9 +463,17 @@
                 </div>
                 <div>
                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">Office ID (Optional)</label>
-                    <input type="text" id="newOfficeId" placeholder="rw_kuningan" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <select id="newOfficeId" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">-- Select Office --</option>
+                        <!-- Populated by JS -->
+                    </select>
                 </div>
-                <button onclick="registerTenant()" style="padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Register & Scrape</button>
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <label style="font-weight: 600; font-size: 12px;">
+                        <input type="checkbox" id="isOfficeCheckbox"> Is Office?
+                    </label>
+                    <button onclick="registerTenant()" style="padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Register</button>
+                </div>
             </div>
         </div>
 
@@ -718,12 +726,14 @@
                     headers: { 'X-Session-Token': sessionToken }
                 });
 
-                if (!response.ok) return;
+                if (!response.ok) return null;
 
                 const data = await response.json();
                 updateHierarchyTable(data.hierarchy);
+                return data.hierarchy;
             } catch (error) {
                 console.error('Error loading hierarchy:', error);
+                return null;
             }
         }
 
@@ -824,7 +834,8 @@
         const originalLoadDashboard = loadDashboard;
         loadDashboard = async function() {
             await originalLoadDashboard();
-            await loadHierarchy();
+            const hierarchyData = await loadHierarchy(); // Modified to return data
+            populateOfficeDropdown(hierarchyData);
             await loadCobrokerageSettings();
             await refreshSecurityIncidents();
         };
@@ -847,6 +858,38 @@
     </div>
 
     <script>
+        // Populate Office Dropdown
+        async function populateOfficeDropdown(hierarchyData) {
+            const select = document.getElementById('newOfficeId');
+            // Keep first option
+            select.innerHTML = '<option value="">-- Select Office --</option>';
+            
+            // Find tenants that are offices
+            const offices = [];
+            
+            // 1. Check hierarchy data for isOffice flag
+            if (hierarchyData) {
+                Object.entries(hierarchyData).forEach(([tenantId, data]) => {
+                    if (data.isOffice) {
+                        offices.push(tenantId);
+                    }
+                });
+            }
+            
+            // 2. Add hardcoded known offices if not present
+            const knownOffices = ['menteng.raywhite.co.id', 'signaturekuningan.com'];
+            knownOffices.forEach(off => {
+                if (!offices.includes(off)) offices.push(off);
+            });
+            
+            offices.sort().forEach(office => {
+                const option = document.createElement('option');
+                option.value = office;
+                option.textContent = office;
+                select.appendChild(option);
+            });
+        }
+
         // Security incidents management
         async function refreshSecurityIncidents() {
             const adminKey = sessionStorage.getItem('adminKey');
@@ -1013,6 +1056,7 @@
             const websiteUrl = document.getElementById('newWebsiteUrl').value;
             const agentName = document.getElementById('newAgentName').value;
             const officeId = document.getElementById('newOfficeId').value;
+            const isOffice = document.getElementById('isOfficeCheckbox').checked;
 
             if (!tenantId || !websiteUrl) {
                 alert('Please enter Tenant ID and Website URL');
@@ -1032,7 +1076,8 @@
                         tenantId,
                         websiteUrl,
                         agentName,
-                        officeId
+                        officeId,
+                        isOffice
                     })
                 });
 
@@ -1040,6 +1085,21 @@
                 if (data.success) {
                     alert('Registration successful! Scraping started in background.');
                     // Clear inputs
+                    document.getElementById('newTenantId').value = '';
+                    document.getElementById('newWebsiteUrl').value = '';
+                    document.getElementById('newAgentName').value = '';
+                    document.getElementById('newOfficeId').value = '';
+                    document.getElementById('isOfficeCheckbox').checked = false;
+                    // Refresh data
+                    loadData();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error registering tenant:', error);
+                alert('Failed to register tenant');
+            }
+        }
                     document.getElementById('newTenantId').value = '';
                     document.getElementById('newWebsiteUrl').value = '';
                     document.getElementById('newAgentName').value = '';
