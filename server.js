@@ -57,8 +57,10 @@ if (EMAIL_PROVIDER === 'sendgrid') {
 }
 
 async function sendEmail({ to, subject, text, html }) {
+    console.log(`[EMAIL] Request to: ${to}, Provider: '${EMAIL_PROVIDER}' (len=${EMAIL_PROVIDER.length}), HasKey: ${!!process.env.BREVO_API_KEY}`);
+    
     // Brevo API support using https module
-    if (EMAIL_PROVIDER === 'BREVO' && process.env.BREVO_API_KEY) {
+    if (EMAIL_PROVIDER.trim() === 'BREVO' && process.env.BREVO_API_KEY) {
         const https = require('https');
         const brevoEndpoint = process.env.EMAIL_PROVIDER_ENDPOINT || 'https://api.brevo.com/v3/';
         

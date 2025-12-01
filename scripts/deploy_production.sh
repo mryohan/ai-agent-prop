@@ -16,15 +16,15 @@ fi
 
 # Load .env file if it exists to get email config
 if [ -f .env ]; then
-  # Read specific keys we need, handling potential spaces
-  EMAIL_PROVIDER=$(grep "^EMAIL_PROVIDER=" .env | cut -d'=' -f2-)
-  EMAIL_PROVIDER_ENDPOINT=$(grep "^EMAIL_PROVIDER_ENDPOINT=" .env | cut -d'=' -f2-)
-  EMAIL_FROM=$(grep "^EMAIL_FROM=" .env | cut -d'=' -f2-)
-  BREVO_API_KEY=$(grep "^BREVO_API_KEY=" .env | cut -d'=' -f2-)
-  AGENT_NOTIFICATION_EMAIL=$(grep "^AGENT_NOTIFICATION_EMAIL=" .env | cut -d'=' -f2-)
-  AGENT_NAME=$(grep "^AGENT_NAME=" .env | cut -d'=' -f2-)
-  AGENT_PHONE=$(grep "^AGENT_PHONE=" .env | cut -d'=' -f2-)
-  ADMIN_KEY=$(grep "^ADMIN_KEY=" .env | cut -d'=' -f2-)
+  # Read specific keys we need, handling potential spaces and removing carriage returns
+  EMAIL_PROVIDER=$(grep "^EMAIL_PROVIDER=" .env | cut -d'=' -f2- | tr -d '\r')
+  EMAIL_PROVIDER_ENDPOINT=$(grep "^EMAIL_PROVIDER_ENDPOINT=" .env | cut -d'=' -f2- | tr -d '\r')
+  EMAIL_FROM=$(grep "^EMAIL_FROM=" .env | cut -d'=' -f2- | tr -d '\r')
+  BREVO_API_KEY=$(grep "^BREVO_API_KEY=" .env | cut -d'=' -f2- | tr -d '\r')
+  AGENT_NOTIFICATION_EMAIL=$(grep "^AGENT_NOTIFICATION_EMAIL=" .env | cut -d'=' -f2- | tr -d '\r')
+  AGENT_NAME=$(grep "^AGENT_NAME=" .env | cut -d'=' -f2- | tr -d '\r')
+  AGENT_PHONE=$(grep "^AGENT_PHONE=" .env | cut -d'=' -f2- | tr -d '\r')
+  ADMIN_KEY=$(grep "^ADMIN_KEY=" .env | cut -d'=' -f2- | tr -d '\r')
 fi
 
 IMAGE=gcr.io/${PROJECT_ID}/ai-agent-prop:${IMAGE_TAG}
