@@ -1011,17 +1011,24 @@ app.post('/admin/tenant/:tenantId/plan', (req, res) => {
 // Admin endpoint to register a new tenant and trigger scraping
 app.post('/admin/tenant/register', async (req, res) => {
     const adminKey = req.headers['x-admin-key'];
-    if (adminKey !== process.env.ADMIN_KEY) {
+    const sessionToken = req.headers['x-session-token'];
+
+    if (!adminKey && !sessionToken) {
         return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const { tenantId, websiteUrl, officeId, agentName, isOffice } = req.body;
+    if (adminKey && adminKey !== process.env.ADMIN_KEY) {
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const { tenantId, websiteUrl, officeId, agentName, isOffice, sitemapUrl } = req.body;
 
     if (!tenantId || !websiteUrl) {
         return res.status(400).json({ error: 'Missing tenantId or websiteUrl' });
     }
 
     console.log(`[ADMIN] Registering new tenant: ${tenantId} (${websiteUrl})`);
+    if (sitemapUrl) console.log(`[ADMIN] Using sitemap: ${sitemapUrl}`);
 
     // 1. Update Office Hierarchy
     const hierarchyData = {
@@ -1046,13 +1053,24 @@ app.post('/admin/tenant/register', async (req, res) => {
 
     // 2. Trigger Scraper (Async)
     // We don't await this so the admin UI doesn't hang
-    scrapeTenant(tenantId, websiteUrl)
+    
+    // Update status to running
+    updateScrapingStatus(tenantId, 'running', { startTime: new Date().toISOString() });
+
+    scrapeTenant(tenantId, websiteUrl, sitemapUrl)
         .then(count => {
             console.log(`[ADMIN] Scrape complete for ${tenantId}: ${count} listings found.`);
-            // Optionally notify admin or update status in DB
+            updateScrapingStatus(tenantId, 'completed', { 
+                endTime: new Date().toISOString(),
+                itemsScraped: count 
+            });
         })
         .catch(err => {
             console.error(`[ADMIN] Scrape failed for ${tenantId}:`, err);
+            updateScrapingStatus(tenantId, 'failed', { 
+                endTime: new Date().toISOString(),
+                error: err.message 
+            });
         });
 
     res.json({
@@ -1065,6 +1083,48 @@ app.post('/admin/tenant/register', async (req, res) => {
             status: 'scraping_started'
         }
     });
+});
+
+// Helper to update scraping status
+async function updateScrapingStatus(tenantId, status, details = {}) {
+    try {
+        const firestore = new Firestore({ projectId: PROJECT_ID });
+        await firestore.collection('scraping_status').doc(tenantId).set({
+            tenantId,
+            status,
+            lastUpdate: new Date().toISOString(),
+            ...details
+        }, { merge: true });
+    } catch (error) {
+        console.error(`Failed to update scraping status for ${tenantId}:`, error);
+    }
+}
+
+// Get scraping status endpoint
+app.get('/admin/scraping/status', async (req, res) => {
+    const adminKey = req.headers['x-admin-key'];
+    const sessionToken = req.headers['x-session-token'];
+    
+    if (!adminKey && !sessionToken) {
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
+    if (adminKey && adminKey !== process.env.ADMIN_KEY) {
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const firestore = new Firestore({ projectId: PROJECT_ID });
+        const snapshot = await firestore.collection('scraping_status').get();
+        const statuses = {};
+        snapshot.forEach(doc => {
+            statuses[doc.id] = doc.data();
+        });
+        res.json(statuses);
+    } catch (error) {
+        console.error('Error fetching scraping status:', error);
+        res.status(500).json({ error: 'Failed to fetch status' });
+    }
 });
 
 // Get co-brokerage configuration

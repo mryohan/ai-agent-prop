@@ -432,6 +432,7 @@
                 <thead>
                     <tr>
                         <th>Tenant</th>
+                        <th>Properties</th>
                         <th>Total Tokens</th>
                         <th>Cost (USD)</th>
                         <th>Requests</th>
@@ -448,7 +449,7 @@
             <p style="color: #666; margin-bottom: 20px;">
                 Add a new agent website to the system. This will trigger an automatic scrape of their listings.
             </p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end; background: #f8f9fa; padding: 20px; border-radius: 8px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end; background: #f8f9fa; padding: 20px; border-radius: 8px;">
                 <div>
                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">Tenant ID (e.g. aldilawibowo)</label>
                     <input type="text" id="newTenantId" placeholder="aldilawibowo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
@@ -456,6 +457,10 @@
                 <div>
                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">Website URL</label>
                     <input type="text" id="newWebsiteUrl" placeholder="https://aldilawibowo.raywhite.co.id" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Sitemap URL (Optional)</label>
+                    <input type="text" id="newSitemapUrl" placeholder="https://.../sitemap.xml.gz" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                 </div>
                 <div>
                     <label style="display: block; margin-bottom: 5px; font-weight: 600;">Agent Name</label>
@@ -475,6 +480,27 @@
                     <button onclick="registerTenant()" style="padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Register</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Scraping Jobs Status -->
+        <div class="section">
+            <h2>🕷️ Scraping Jobs Status</h2>
+            <p style="color: #666; margin-bottom: 20px;">
+                Monitor the progress of background scraping jobs.
+            </p>
+            <table id="scrapingTable">
+                <thead>
+                    <tr>
+                        <th>Tenant ID</th>
+                        <th>Status</th>
+                        <th>Items Scraped</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Last Update</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
 
         <!-- Office Hierarchy -->
@@ -681,6 +707,7 @@
                 const row = `
                     <tr>
                         <td>${tenant.tenant}</td>
+                        <td>${tenant.propertyCount || 0}</td>
                         <td>${tenant.tokens.total.toLocaleString()}</td>
                         <td>$${tenant.cost.total}</td>
                         <td>${tenant.requests}</td>
@@ -830,7 +857,7 @@
             }
         }
 
-        // Enhanced loadDashboard to include hierarchy, co-brokerage, and security
+        // Enhanced loadDashboard to include hierarchy, co-brokerage, security, and scraping status
         const originalLoadDashboard = loadDashboard;
         loadDashboard = async function() {
             await originalLoadDashboard();
@@ -838,7 +865,50 @@
             populateOfficeDropdown(hierarchyData);
             await loadCobrokerageSettings();
             await refreshSecurityIncidents();
+            await loadScrapingStatus();
         };
+
+        async function loadScrapingStatus() {
+            try {
+                const response = await fetch('/admin/scraping/status', {
+                    headers: { 'X-Session-Token': sessionToken }
+                });
+
+                if (!response.ok) return;
+
+                const statuses = await response.json();
+                updateScrapingTable(statuses);
+            } catch (error) {
+                console.error('Error loading scraping status:', error);
+            }
+        }
+
+        function updateScrapingTable(statuses) {
+            const tbody = document.getElementById('scrapingTable').querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            Object.values(statuses || {}).sort((a, b) => new Date(b.lastUpdate) - new Date(a.lastUpdate)).forEach(job => {
+                const statusClass = job.status === 'completed' ? 'badge-success' : 
+                                  job.status === 'running' ? 'badge-warning' : 
+                                  job.status === 'failed' ? 'badge-danger' : 'badge';
+                
+                const row = `
+                    <tr>
+                        <td><strong>${job.tenantId}</strong></td>
+                        <td><span class="badge ${statusClass}">${job.status.toUpperCase()}</span></td>
+                        <td>${job.itemsScraped || 0}</td>
+                        <td>${job.startTime ? new Date(job.startTime).toLocaleString() : '-'}</td>
+                        <td>${job.endTime ? new Date(job.endTime).toLocaleString() : '-'}</td>
+                        <td>${job.lastUpdate ? new Date(job.lastUpdate).toLocaleString() : '-'}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            
+            if (Object.keys(statuses || {}).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No scraping jobs found</td></tr>';
+            }
+        }
 
         // Auto-refresh every 30 seconds
         setInterval(() => {
@@ -892,13 +962,14 @@
 
         // Security incidents management
         async function refreshSecurityIncidents() {
-            const adminKey = sessionStorage.getItem('adminKey');
-            if (!adminKey) return;
+            if (!sessionToken) return;
 
             document.getElementById('securityCount').textContent = 'Loading...';
 
             try {
-                const response = await fetch(`/admin/security-incidents?key=${adminKey}`);
+                const response = await fetch('/admin/security-incidents', {
+                    headers: { 'X-Session-Token': sessionToken }
+                });
                 const data = await response.json();
 
                 const tbody = document.querySelector('#securityTable tbody');
@@ -1054,6 +1125,7 @@
         async function registerTenant() {
             const tenantId = document.getElementById('newTenantId').value;
             const websiteUrl = document.getElementById('newWebsiteUrl').value;
+            const sitemapUrl = document.getElementById('newSitemapUrl').value;
             const agentName = document.getElementById('newAgentName').value;
             const officeId = document.getElementById('newOfficeId').value;
             const isOffice = document.getElementById('isOfficeCheckbox').checked;
@@ -1070,11 +1142,12 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'x-admin-key': adminKey
+                        'x-session-token': sessionToken
                     },
                     body: JSON.stringify({
                         tenantId,
                         websiteUrl,
+                        sitemapUrl,
                         agentName,
                         officeId,
                         isOffice
@@ -1087,25 +1160,12 @@
                     // Clear inputs
                     document.getElementById('newTenantId').value = '';
                     document.getElementById('newWebsiteUrl').value = '';
+                    document.getElementById('newSitemapUrl').value = '';
                     document.getElementById('newAgentName').value = '';
                     document.getElementById('newOfficeId').value = '';
                     document.getElementById('isOfficeCheckbox').checked = false;
                     // Refresh data
-                    loadData();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (error) {
-                console.error('Error registering tenant:', error);
-                alert('Failed to register tenant');
-            }
-        }
-                    document.getElementById('newTenantId').value = '';
-                    document.getElementById('newWebsiteUrl').value = '';
-                    document.getElementById('newAgentName').value = '';
-                    document.getElementById('newOfficeId').value = '';
-                    // Refresh data
-                    loadData();
+                    loadDashboard();
                 } else {
                     alert('Error: ' + data.error);
                 }

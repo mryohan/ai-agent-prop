@@ -20,3 +20,5 @@ test-*.js
 debug_gcs.js
 reproduce_logic.js
 kaggle-criteria.txt
+debug_scraper.js
+*.gz
