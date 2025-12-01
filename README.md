@@ -126,7 +126,7 @@ graph TD
 ## 🛠️ Technology Stack
 
 ### Core Technologies
-- **AI Model**: Google Vertex AI Gemini 1.5 Flash Lite (gemini-1.5-flash-002)
+- **AI Model**: Google Vertex AI Gemini 1.5 Flash (gemini-1.5-flash-002)
 - **Backend**: Node.js 20 + Express.js
 - **Deployment**: Google Cloud Run (Containerized)
 - **Database**: Google Firestore (Native Mode)
