@@ -20,14 +20,21 @@ function getTenantGcsPath() {
 
 const GCS_PATH = getTenantGcsPath();
 
-async function scrapeProperties() {
-    console.log('Starting deep scrape...');
+async function scrapeTenant(tenantId, baseUrl) {
+    const targetUrl = baseUrl || BASE_URL;
+    const targetTenantId = tenantId || TENANT_ID;
+    const targetGcsPath = (MULTI_TENANT_MODE && targetTenantId !== 'default') 
+        ? `${targetTenantId}/properties.json` 
+        : (process.env.GCS_PATH || OUTPUT_FILE);
+
+    console.log(`Starting scrape for tenant: ${targetTenantId} at ${targetUrl}`);
+    
     let properties = [];
     const maxPages = 30; // Estimate for ~255 listings (approx 10 per page)
 
     // Step 1: Get all listing URLs
     for (let page = 1; page <= maxPages; page++) {
-        const url = `${BASE_URL}/?page=${page}`;
+        const url = `${targetUrl}/?page=${page}`;
         console.log(`Fetching list page ${page}...`);
 
         try {
@@ -37,7 +44,7 @@ async function scrapeProperties() {
 
             $('a[href*="/properti/"], a[href*="/buy/"], a[href*="/rent/"]').each((i, element) => {
                 const href = $(element).attr('href');
-                const fullUrl = href.startsWith('http') ? href : `${BASE_URL}${href}`;
+                const fullUrl = href.startsWith('http') ? href : `${targetUrl}${href}`;
 
                 if (properties.some(p => p.url === fullUrl)) return;
 
@@ -169,10 +176,10 @@ async function scrapeProperties() {
         try {
             const storage = new Storage();
             await storage.bucket(GCS_BUCKET).upload(OUTPUT_FILE, {
-                destination: GCS_PATH,
+                destination: targetGcsPath,
                 contentType: 'application/json'
             });
-            console.log(`Uploaded ${OUTPUT_FILE} to gs://${GCS_BUCKET}/${GCS_PATH}`);
+            console.log(`Uploaded ${OUTPUT_FILE} to gs://${GCS_BUCKET}/${targetGcsPath}`);
         } catch (e) {
             console.error('Failed to upload to GCS:', e.message);
         }
@@ -181,10 +188,10 @@ async function scrapeProperties() {
             if (FIRESTORE_COLLECTION) {
                 try {
                     const firestore = new Firestore({ projectId: process.env.GOOGLE_CLOUD_PROJECT_ID });
-                    const collection = (MULTI_TENANT_MODE && TENANT_ID !== 'default') 
-                        ? `${FIRESTORE_COLLECTION}_${TENANT_ID}` 
+                    const collection = (MULTI_TENANT_MODE && targetTenantId !== 'default') 
+                        ? `${FIRESTORE_COLLECTION}_${targetTenantId}` 
                         : FIRESTORE_COLLECTION;
-                    console.log(`[${TENANT_ID}] Uploading ${properties.length} properties to Firestore collection ${collection}...`);
+                    console.log(`[${targetTenantId}] Uploading ${properties.length} properties to Firestore collection ${collection}...`);
                     const batchSize = 500;
                     for (let i = 0; i < properties.length; i += batchSize) {
                         const batch = firestore.batch();
@@ -201,6 +208,12 @@ async function scrapeProperties() {
                 }
             }
     }
+    
+    return properties.length;
 }
 
-scrapeProperties();
+if (require.main === module) {
+    scrapeTenant(TENANT_ID, BASE_URL);
+}
+
+module.exports = { scrapeTenant };

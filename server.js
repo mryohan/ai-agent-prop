@@ -18,6 +18,7 @@
  * - Database: Firestore (Logs/State) & GCS (Property Data)
  */
 
+const { scrapeTenant } = require('./scraper');
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
@@ -1004,6 +1005,53 @@ app.post('/admin/tenant/:tenantId/plan', (req, res) => {
         success: true, 
         message: `Tenant ${tenantId} updated to ${plan} plan`,
         usage: usage
+    });
+});
+
+// Admin endpoint to register a new tenant and trigger scraping
+app.post('/admin/tenant/register', async (req, res) => {
+    const adminKey = req.headers['x-admin-key'];
+    if (adminKey !== process.env.ADMIN_KEY) {
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const { tenantId, websiteUrl, officeId, agentName } = req.body;
+
+    if (!tenantId || !websiteUrl) {
+        return res.status(400).json({ error: 'Missing tenantId or websiteUrl' });
+    }
+
+    console.log(`[ADMIN] Registering new tenant: ${tenantId} (${websiteUrl})`);
+
+    // 1. Update Office Hierarchy
+    if (officeId) {
+        officeHierarchy[tenantId] = {
+            office: officeId,
+            national: 'www.raywhite.co.id'
+        };
+        console.log(`[ADMIN] Linked ${tenantId} to office ${officeId}`);
+    }
+
+    // 2. Trigger Scraper (Async)
+    // We don't await this so the admin UI doesn't hang
+    scrapeTenant(tenantId, websiteUrl)
+        .then(count => {
+            console.log(`[ADMIN] Scrape complete for ${tenantId}: ${count} listings found.`);
+            // Optionally notify admin or update status in DB
+        })
+        .catch(err => {
+            console.error(`[ADMIN] Scrape failed for ${tenantId}:`, err);
+        });
+
+    res.json({
+        success: true,
+        message: `Tenant ${tenantId} registered. Scraping started in background.`,
+        details: {
+            tenantId,
+            websiteUrl,
+            officeId: officeId || 'none',
+            status: 'scraping_started'
+        }
     });
 });
 

@@ -442,6 +442,33 @@
             </table>
         </div>
 
+        <!-- Register New Tenant -->
+        <div class="section">
+            <h2>➕ Register New Tenant</h2>
+            <p style="color: #666; margin-bottom: 20px;">
+                Add a new agent website to the system. This will trigger an automatic scrape of their listings.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end; background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Tenant ID (e.g. aldilawibowo)</label>
+                    <input type="text" id="newTenantId" placeholder="aldilawibowo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Website URL</label>
+                    <input type="text" id="newWebsiteUrl" placeholder="https://aldilawibowo.raywhite.co.id" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Agent Name</label>
+                    <input type="text" id="newAgentName" placeholder="Aldila Wibowo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Office ID (Optional)</label>
+                    <input type="text" id="newOfficeId" placeholder="rw_kuningan" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <button onclick="registerTenant()" style="padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Register & Scrape</button>
+            </div>
+        </div>
+
         <!-- Office Hierarchy -->
         <div class="section">
             <h2>🏢 Office Hierarchy (Priority Search)</h2>
@@ -980,6 +1007,53 @@
                 modal.style.display = 'none';
             }
         };
+
+        async function registerTenant() {
+            const tenantId = document.getElementById('newTenantId').value;
+            const websiteUrl = document.getElementById('newWebsiteUrl').value;
+            const agentName = document.getElementById('newAgentName').value;
+            const officeId = document.getElementById('newOfficeId').value;
+
+            if (!tenantId || !websiteUrl) {
+                alert('Please enter Tenant ID and Website URL');
+                return;
+            }
+
+            if (!confirm(`Register tenant "${tenantId}" and start scraping ${websiteUrl}?`)) return;
+
+            try {
+                const response = await fetch('/admin/tenant/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-key': adminKey
+                    },
+                    body: JSON.stringify({
+                        tenantId,
+                        websiteUrl,
+                        agentName,
+                        officeId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Registration successful! Scraping started in background.');
+                    // Clear inputs
+                    document.getElementById('newTenantId').value = '';
+                    document.getElementById('newWebsiteUrl').value = '';
+                    document.getElementById('newAgentName').value = '';
+                    document.getElementById('newOfficeId').value = '';
+                    // Refresh data
+                    loadData();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error registering tenant:', error);
+                alert('Failed to register tenant');
+            }
+        }
     </script>
 </body>
 </html>
