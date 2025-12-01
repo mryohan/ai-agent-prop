@@ -2,11 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Run-4285F4?logo=google-cloud)](https://cloud.google.com/run)
-[![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%202.5-00897B?logo=google)](https://cloud.google.com/vertex-ai)
+[![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%201.5%20Flash-00897B?logo=google)](https://cloud.google.com/vertex-ai)
 
 > **🏆 Kaggle Competition Submission**: Agents Intensive Capstone Project - Enterprise Track
 
-An enterprise-grade conversational AI agent for real estate property search, built with **Google Cloud Vertex AI Gemini 2.5 Flash**. Features multi-tenant architecture, advanced security, anti-hallucination systems, and comprehensive automation for property recommendations and viewings.
+An enterprise-grade conversational AI agent for real estate property search, built with **Google Cloud Vertex AI Gemini 1.5 Flash**. Features multi-tenant architecture, advanced security, anti-hallucination systems, and comprehensive automation for property recommendations and viewings.
 
 ---
 
@@ -39,7 +39,7 @@ Real estate agents miss 40% of calls and take hours to respond to leads. Existin
 This project demonstrates the following key concepts from the course:
 
 ### 1. Agent Powered by an LLM
-- **Model**: Gemini 2.5 Flash via Vertex AI.
+- **Model**: Gemini 1.5 Flash (002) via Vertex AI.
 - **Implementation**: Uses a sophisticated system prompt with persona definition and strict anti-hallucination rules.
 - **Context**: Maintains multi-turn conversation history and injects "page context" (the property the user is currently looking at).
 
@@ -65,7 +65,7 @@ This project demonstrates the following key concepts from the course:
 ```mermaid
 graph TD
     User["User / Website Visitor"] -->|Chat Interface| CloudRun["Google Cloud Run (Node.js)"]
-    CloudRun -->|Reasoning| Gemini["Vertex AI (Gemini 2.5 Flash)"]
+    CloudRun -->|Reasoning| Gemini["Vertex AI (Gemini 1.5 Flash)"]
     CloudRun -->|Property Data| GCS["Google Cloud Storage (JSON)"]
     CloudRun -->|State & Logs| Firestore["Google Firestore"]
     CloudRun -->|Emails| Brevo["Brevo SMTP API"]
@@ -83,7 +83,7 @@ graph TD
 2. **Context Injection** → Server extracts Property ID from URL and prepends to prompt
 3. **Security Check** → 6-category threat detection (blocks malicious inputs)
 4. **Language Detection** → Identifies English/Indonesian for consistent responses
-5. **Vertex AI Processing** → Gemini 2.5 with function calling
+5. **Vertex AI Processing** → Gemini 1.5 Flash with function calling
 6. **Tool Execution** → Searches properties with priority hierarchy
 7. **Auto-Correction** → If tool is skipped for property queries, server forces a retry
 8. **Response Validation** → Anti-hallucination checks against actual data
