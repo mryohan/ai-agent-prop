@@ -288,29 +288,20 @@ function generateVisitorEmailHTML({ visitorName, propertyTitle, propertyUrl, pro
                                 </tr>
                             </table>
                             
-                            <!-- Viewing Details -->
-                            <table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0;">
-                                <tr>
-                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                                        <strong style="color: #333;">📅 Date:</strong>
-                                        <span style="color: #666; float: right;">${date}</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                                        <strong style="color: #333;">🕐 Time:</strong>
-                                        <span style="color: #666; float: right;">${time}</span>
-                                    </td>
-                                </tr>
-                                ${message ? `
-                                <tr>
-                                    <td style="padding: 10px;">
-                                        <strong style="color: #333;">💬 Your Message:</strong>
-                                        <p style="color: #666; margin: 10px 0 0 0;">${message}</p>
-                                    </td>
-                                </tr>
-                                ` : ''}
-                            </table>
+                            <!-- Details Section -->
+                            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; font-family: Arial, sans-serif; color: #333;">
+                                <p style="margin: 0 0 10px 0; font-weight: bold;">Details:</p>
+                                <p style="margin: 5px 0;"><strong>Date:</strong> ${formattedDate}</p>
+                                <p style="margin: 5px 0;"><strong>Time:</strong> ${time}</p>
+                                <p style="margin: 5px 0;"><strong>Location:</strong> ${propertyTitle} ${propertyUrl ? `, <a href="${propertyUrl}" style="color: #667eea; text-decoration: none;">${propertyUrl}</a>` : ''}</p>
+                            </div>
+
+                            ${message ? `
+                            <div style="margin: 20px 0;">
+                                <strong style="color: #333;">💬 Your Message:</strong>
+                                <p style="color: #666; margin: 5px 0 0 0;">${message}</p>
+                            </div>
+                            ` : ''}
                             
                             <div style="background-color: #e8f5e9; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0; border-radius: 4px;">
                                 <p style="margin: 0; color: #27ae60; font-weight: bold;">✓ Your request has been sent to our agent</p>
@@ -416,8 +407,12 @@ function generateAgentLeadEmailHTML({ visitorName, visitorEmail, visitorPhone, p
                                 <tr>
                                     <td style="padding: 15px; background-color: #fff3cd; border-radius: 8px;">
                                         <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">📅 Requested Viewing Time</h3>
-                                        <p style="margin: 0; color: #666; font-size: 14px;"><strong>Date:</strong> ${date}</p>
-                                        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;"><strong>Time:</strong> ${time}</p>
+                                        <div style="font-family: Arial, sans-serif; color: #333;">
+                                            <p style="margin: 0 0 10px 0; font-weight: bold;">Details:</p>
+                                            <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                            <p style="margin: 5px 0;"><strong>Time:</strong> ${time}</p>
+                                            <p style="margin: 5px 0;"><strong>Location:</strong> ${propertyTitle}${propertyUrl ? `, <a href="${propertyUrl}" style="color: #667eea; text-decoration: none;">${propertyUrl}</a>` : ''}</p>
+                                        </div>
                                     </td>
                                 </tr>
                             </table>
