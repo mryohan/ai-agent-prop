@@ -25,6 +25,7 @@ if [ -f .env ]; then
   AGENT_NAME=$(grep "^AGENT_NAME=" .env | cut -d'=' -f2- | tr -d '\r')
   AGENT_PHONE=$(grep "^AGENT_PHONE=" .env | cut -d'=' -f2- | tr -d '\r')
   ADMIN_KEY=$(grep "^ADMIN_KEY=" .env | cut -d'=' -f2- | tr -d '\r')
+  VERTEX_AI_LOCATION=$(grep "^VERTEX_AI_LOCATION=" .env | cut -d'=' -f2- | tr -d '\r')
 fi
 
 IMAGE=gcr.io/${PROJECT_ID}/ai-agent-prop:${IMAGE_TAG}
@@ -54,6 +55,7 @@ if [ -n "${AGENT_NOTIFICATION_EMAIL:-}" ]; then echo "AGENT_NOTIFICATION_EMAIL: 
 if [ -n "${AGENT_NAME:-}" ]; then echo "AGENT_NAME: \"${AGENT_NAME}\"" >> "$ENV_FILE"; fi
 if [ -n "${AGENT_PHONE:-}" ]; then echo "AGENT_PHONE: \"${AGENT_PHONE}\"" >> "$ENV_FILE"; fi
 if [ -n "${ADMIN_KEY:-}" ]; then echo "ADMIN_KEY: \"${ADMIN_KEY}\"" >> "$ENV_FILE"; fi
+if [ -n "${VERTEX_AI_LOCATION:-}" ]; then echo "VERTEX_AI_LOCATION: \"${VERTEX_AI_LOCATION}\"" >> "$ENV_FILE"; fi
 
 echo "Deploying Cloud Run service to region ${REGION}..."
 gcloud run deploy ai-agent-prop \
