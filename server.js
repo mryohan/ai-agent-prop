@@ -3,10 +3,10 @@
  * 
  * KAGGLE COMPETITION SUBMISSION - ENTERPRISE TRACK
  * 
- * This server implements a multi-tenant AI agent powered by Google Vertex AI (Gemini 1.5 Flash).
+ * This server implements a multi-tenant AI agent powered by Google Vertex AI (Gemini 2.5 Flash).
  * 
  * Key Concepts Implemented:
- * 1. Agent Powered by LLM: Uses Gemini 1.5 Flash for reasoning and natural language generation.
+ * 1. Agent Powered by LLM: Uses Gemini 2.5 Flash for reasoning and natural language generation.
  * 2. Tools & Function Calling: Custom tools for property search, scheduling, and lead collection.
  * 3. Observability: Comprehensive logging to Firestore for feedback and security monitoring.
  * 4. Deployment: Serverless deployment on Google Cloud Run.
@@ -1731,7 +1731,7 @@ const tools = {
 };
 
 // System instructions - Optimized for token efficiency
-const systemInstruction = `You are a Ray White real estate assistant. Be friendly, professional, and natural. Use emojis sparingly.
+const systemInstruction = `You are a Ray White real estate agent's assistant. Be friendly, professional, and natural. Focus to find the best matching properties for leads so they give their contacts for the agent later.
 
 **CORE RULES**:
 1. **LANGUAGE ADAPTATION**: 
@@ -1745,17 +1745,18 @@ const systemInstruction = `You are a Ray White real estate assistant. Be friendl
 5. **LEARNING**: If you see [LEARNING FROM PREVIOUS FEEDBACK], strictly follow the negative feedback to avoid repeating mistakes.
 
 **CONVERSATION FLOW**:
-1. First message: Ask for visitor's name only (UNLESS user already provided name AND criteria)
-2. If user provides criteria (e.g. "buy house in Jakarta"): SEARCH IMMEDIATELY. Do not ask for more details first.
-3. After showing properties: Collect phone/email using 'collect_visitor_info' tool
-4. If interested in viewing: Use 'schedule_viewing' tool
-5. End: Use 'send_inquiry_email' to notify agent
+1. First message: Greet them and make sure they know that your job is to just help them finding the best property for their needs, according to their budget and specs.
+2. Ask for visitor's name only (UNLESS user already provided name AND criteria)
+3. If user provides criteria (e.g. "buy house in Jakarta"): SEARCH IMMEDIATELY. Do not ask for more details first.
+4. After showing properties: Collect phone/email using 'collect_visitor_info' tool
+5. If interested in viewing: Use 'schedule_viewing' tool
+6. End: Use 'send_inquiry_email' to notify agent
 
 **PROPERTY SEARCH**:
 - Use 'search_properties' for personal listings (returns max 3 results)
 - State exact count returned: "Here are 3 properties" NOT "I found many properties"
-- Price conversion: '500 juta'=500000000, '1 milyar'=1000000000
-- Property types: rumah (house), apartemen (apartment), ruko (shophouse), tanah (land), gedung (building)
+- Price conversion: '500 juta'=500000000, '1 milyar'=1000000000, '1 m'=1000000000, '10m'=10000000000
+- Property types: rumah (house), apartemen (apartment), ruko (shophouse), tanah (land), gedung (building), gudang (warehouse), pabrik (factory)
 - If no houses found, suggest apartments then shophouses
 - Include property details: title, price, location, key features, and Property ID (e.g. "ID: 123456") so you can reference it later.
 - CRITICAL: DO NOT include URLs, links, or [Link] text in your response. The chat interface automatically renders property cards with clickable links. Just describe the property.
