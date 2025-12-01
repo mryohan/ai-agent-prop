@@ -2,26 +2,24 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Run-4285F4?logo=google-cloud)](https://cloud.google.com/run)
-[![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%202.5-00897B?logo=google)](https://cloud.google.com/vertex-ai)
+[![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%201.5-00897B?logo=google)](https://cloud.google.com/vertex-ai)
 
-> **Kaggle Competition Submission**: Agents Intensive Capstone Project - Enterprise Track
+> **🏆 Kaggle Competition Submission**: Agents Intensive Capstone Project - Enterprise Track
 
-An enterprise-grade conversational AI agent for real estate property search, built with Google Cloud Vertex AI Gemini 2.5. Features multi-tenant architecture, advanced security, anti-hallucination systems, and comprehensive automation for property recommendations and viewings.
+An enterprise-grade conversational AI agent for real estate property search, built with **Google Cloud Vertex AI Gemini 1.5 Flash**. Features multi-tenant architecture, advanced security, anti-hallucination systems, and comprehensive automation for property recommendations and viewings.
 
 ---
 
 ## 📋 Table of Contents
 
 - [Overview](#overview)
-- [Key Features](#key-features)
+- [Kaggle Competition Highlights](#kaggle-competition-highlights)
 - [Architecture](#architecture)
-- [Performance Metrics](#performance-metrics)
+- [Key Features](#key-features)
 - [Technology Stack](#technology-stack)
 - [Quick Start](#quick-start)
 - [Deployment](#deployment)
 - [Documentation](#documentation)
-- [Demo](#demo)
-- [Competition Highlights](#competition-highlights)
 
 ---
 
@@ -30,17 +28,62 @@ An enterprise-grade conversational AI agent for real estate property search, bui
 Ray White AI Agent is a production-ready enterprise solution that transforms real estate property search through intelligent conversation. The system handles multiple real estate offices (multi-tenant), prevents AI hallucinations, blocks security threats, and provides seamless property discovery with automated email notifications.
 
 **Live Demo**: [https://cernanlantang.raywhite.co.id](https://cernanlantang.raywhite.co.id)
-[https://aldilawibowo.raywhite.co.id](https://aldilawibowo.raywhite.co.id)
 
 ### Problem Statement
+Real estate agents miss 40% of calls and take hours to respond to leads. Existing chatbots are rigid and hallucinate property details. This agent solves these issues by providing accurate, 24/7 instant responses and automating the scheduling process.
 
-Traditional real estate websites require users to manually filter through properties. Our AI agent:
-- 🤖 Understands natural language queries in English and Indonesian
-- 🔍 Intelligently searches across personal, office, and national property databases
-- 🎯 Learns from user feedback to improve recommendations
-- 🔒 Protects against malicious inputs and data breaches
-- ✅ Prevents AI hallucinations with multi-layer validation
-- 📧 Automates viewing scheduling with professional email notifications
+---
+
+## 🏆 Kaggle Competition Highlights
+
+This project demonstrates the following key concepts from the course:
+
+### 1. Agent Powered by an LLM
+- **Model**: Gemini 1.5 Flash via Vertex AI.
+- **Implementation**: Uses a sophisticated system prompt with persona definition and strict anti-hallucination rules.
+- **Context**: Maintains multi-turn conversation history and injects "page context" (the property the user is currently looking at).
+
+### 2. Tools & Function Calling
+- **Custom Tools**:
+  - `search_properties`: Semantic and filter-based search over the property database.
+  - `schedule_viewing`: Validates dates and triggers email workflows.
+  - `collect_visitor_info`: Intelligent entity extraction for lead generation.
+- **Integration**: The agent autonomously decides when to call tools based on user intent.
+
+### 3. Observability & Logging
+- **Firestore Integration**: Logs every conversation turn, user feedback (thumbs up/down), and security incidents.
+- **Security Dashboard**: Tracks prompt injection attempts and PII leakage.
+
+### 4. Agent Deployment
+- **Cloud Run**: Fully serverless deployment with auto-scaling.
+- **CI/CD**: Automated deployment scripts (`deploy_production.sh`) manage environment variables and revision history.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    User[User / Website Visitor] -->|Chat Interface| CloudRun[Google Cloud Run (Node.js)]
+    CloudRun -->|Reasoning| Gemini[Vertex AI (Gemini 1.5 Flash)]
+    CloudRun -->|Property Data| GCS[Google Cloud Storage (JSON)]
+    CloudRun -->|State & Logs| Firestore[Google Firestore]
+    CloudRun -->|Emails| Brevo[Brevo SMTP API]
+    
+    subgraph "Agent Logic"
+        Gemini -->|Tool Call| Search[Property Search Tool]
+        Gemini -->|Tool Call| Schedule[Scheduling Tool]
+        Gemini -->|Tool Call| Security[Input/Output Guardrails]
+    end
+```
+
+### Data Flow
+1.  **User Query**: Received via WebSocket/REST API.
+2.  **Security Check**: Input is scanned for prompt injection and PII.
+3.  **LLM Processing**: Gemini 1.5 Flash analyzes intent and context.
+4.  **Tool Execution**: Agent calls `search_properties` or `schedule_viewing` if needed.
+5.  **Response Generation**: Natural language response is generated based on tool outputs.
+6.  **Post-Processing**: Response is sanitized and logged to Firestore.
 
 ---
 

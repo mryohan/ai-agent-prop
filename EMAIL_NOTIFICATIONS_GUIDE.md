@@ -115,7 +115,7 @@ EMAIL_PASSWORD=your-app-password
 
 ### Agent Lead Notification Email
 
-**Subject**: `🔥 New Viewing Request: [Property Title]`
+**Subject**: `🔥 New Viewing Request: [Visitor Name] - [Property Title]`
 
 **Features**:
 - Urgent red alert header

@@ -15,3 +15,8 @@ nohup.out
 # Test files
 test-*.html
 test-*.js
+
+# Temporary/Debug files
+debug_gcs.js
+reproduce_logic.js
+kaggle-criteria.txt

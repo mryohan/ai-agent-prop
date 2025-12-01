@@ -1,3 +1,23 @@
+/**
+ * Ray White AI Agent - Enterprise Real Estate Assistant
+ * 
+ * KAGGLE COMPETITION SUBMISSION - ENTERPRISE TRACK
+ * 
+ * This server implements a multi-tenant AI agent powered by Google Vertex AI (Gemini 1.5 Flash).
+ * 
+ * Key Concepts Implemented:
+ * 1. Agent Powered by LLM: Uses Gemini 1.5 Flash for reasoning and natural language generation.
+ * 2. Tools & Function Calling: Custom tools for property search, scheduling, and lead collection.
+ * 3. Observability: Comprehensive logging to Firestore for feedback and security monitoring.
+ * 4. Deployment: Serverless deployment on Google Cloud Run.
+ * 
+ * Architecture:
+ * - Frontend: Embeddable chat widget (HTML/JS)
+ * - Backend: Node.js/Express
+ * - AI: Vertex AI Gemini API
+ * - Database: Firestore (Logs/State) & GCS (Property Data)
+ */
+
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
 const cors = require('cors');
@@ -126,6 +146,13 @@ async function sendEmail({ to, subject, text, html }) {
         return;
     }
 
+    // Fallback to SMTP
+    try {
+        return await sendEmailViaSMTP(to, subject, text, html);
+    } catch (error) {
+        console.error('SMTP send failed:', error.message);
+        throw error;
+    }
 }
 
 // Helper function to validate and correct preferred_date
@@ -211,7 +238,8 @@ function sendEmailViaSMTP(to, subject, text, html) {
     if (!transporter) {
         throw new Error('No email transporter configured');
     }
-    return transporter.sendMail({ from: process.env.EMAIL_USER, to, subject, text, html });
+    const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+    return transporter.sendMail({ from, to, subject, text, html });
 }
 
 // Email HTML templates
@@ -630,11 +658,32 @@ app.get('/admin/dashboard', async (req, res) => {
         return res.status(403).json({ error: 'Unauthorized' });
     }
     
+    // Get all available tenants from GCS to ensure we show even inactive ones
+    let allTenants = new Set(tokenUsageByTenant.keys());
+    try {
+        const storage = new Storage();
+        const [files] = await storage.bucket(PROPERTIES_GCS_BUCKET).getFiles();
+        files.forEach(file => {
+            const match = file.name.match(/^([^/]+)\/properties\.json$/);
+            if (match) allTenants.add(match[1]);
+        });
+    } catch (error) {
+        console.error('Error listing GCS tenants:', error);
+    }
+
     const stats = [];
-    for (const [tenantId, usage] of tokenUsageByTenant.entries()) {
+    for (const tenantId of allTenants) {
+        const usage = tokenUsageByTenant.get(tenantId) || initTenantUsage(tenantId);
         const limit = TOKEN_LIMITS[usage.plan].monthly;
         const totalTokens = usage.inputTokens + usage.outputTokens;
         const percentage = (totalTokens / limit) * 100;
+        
+        // Get property count
+        let propertyCount = 0;
+        try {
+             const props = await getPropertiesForTenant(tenantId);
+             propertyCount = props.length;
+        } catch (e) { console.error(`Failed to get props for ${tenantId}`, e); }
         
         stats.push({
             tenant: tenantId,
@@ -651,6 +700,7 @@ app.get('/admin/dashboard', async (req, res) => {
                 currency: 'USD'
             },
             requests: usage.requestCount,
+            propertyCount: propertyCount,
             lastReset: new Date(usage.lastReset).toISOString(),
             status: totalTokens >= limit ? 'EXCEEDED' : percentage > 80 ? 'WARNING' : 'OK'
         });
@@ -665,9 +715,13 @@ app.get('/admin/dashboard', async (req, res) => {
         const firestore = new Firestore({ projectId: PROJECT_ID });
         const allFeedback = await firestore.collection('feedback').get();
         
+        // Sort documents by timestamp descending (newest first)
+        const sortedDocs = allFeedback.docs.map(doc => doc.data()).sort((a, b) => {
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        });
+        
         const feedbackByTenant = {};
-        allFeedback.docs.forEach(doc => {
-            const data = doc.data();
+        sortedDocs.forEach(data => {
             const tid = data.tenantId || 'unknown';
             if (!feedbackByTenant[tid]) {
                 feedbackByTenant[tid] = { total: 0, thumbsUp: 0, thumbsDown: 0, recentFeedback: [] };
@@ -753,6 +807,7 @@ app.get('/admin', (req, res) => {
         .progress-fill { height: 100%; background: #28a745; transition: width 0.3s; }
         .progress-fill.warning { background: #ffc107; }
         .progress-fill.exceeded { background: #dc3545; }
+        .section-title { margin-top: 40px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -763,12 +818,13 @@ app.get('/admin', (req, res) => {
         
         <div class="summary" id="summary"></div>
         
-        <h2>Tenant Usage Details</h2>
+        <h2 class="section-title">Tenant Usage & Properties</h2>
         <table id="tenants-table">
             <thead>
                 <tr>
                     <th>Tenant</th>
                     <th>Plan</th>
+                    <th>Properties (GCS)</th>
                     <th>Token Usage</th>
                     <th>Requests</th>
                     <th>Cost (USD)</th>
@@ -777,6 +833,23 @@ app.get('/admin', (req, res) => {
                 </tr>
             </thead>
             <tbody id="tenants-body"></tbody>
+        </table>
+
+        <h2 class="section-title">Feedback & RAG Intelligence</h2>
+        <div class="summary" id="feedback-summary"></div>
+        
+        <h3>Recent Feedback</h3>
+        <table id="feedback-table">
+            <thead>
+                <tr>
+                    <th>Tenant</th>
+                    <th>Rating</th>
+                    <th>User Message</th>
+                    <th>Feedback</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody id="feedback-body"></tbody>
         </table>
     </div>
     
@@ -828,6 +901,7 @@ app.get('/admin', (req, res) => {
                         <tr>
                             <td><strong>\${tenant.tenant}</strong></td>
                             <td>\${tenant.plan.toUpperCase()}</td>
+                            <td>\${tenant.propertyCount || 0}</td>
                             <td>
                                 <div>\${tenant.tokens.total.toLocaleString()} / \${tenant.tokens.limit.toLocaleString()} (\${tenant.tokens.percentage}%)</div>
                                 <div class="progress-bar">
@@ -842,6 +916,58 @@ app.get('/admin', (req, res) => {
                         </tr>
                     \`;
                 }).join('');
+
+                // Feedback Summary
+                let totalFeedback = 0;
+                let totalThumbsUp = 0;
+                let recentFeedback = [];
+                
+                Object.keys(data.feedback).forEach(tid => {
+                    const fb = data.feedback[tid];
+                    totalFeedback += fb.total;
+                    totalThumbsUp += fb.thumbsUp;
+                    fb.recentFeedback.forEach(item => {
+                        recentFeedback.push({ ...item, tenantId: tid });
+                    });
+                });
+                
+                // Sort recent feedback by time
+                recentFeedback.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                recentFeedback = recentFeedback.slice(0, 10); // Show top 10
+
+                const satisfactionRate = totalFeedback > 0 ? ((totalThumbsUp / totalFeedback) * 100).toFixed(1) : '0.0';
+
+                document.getElementById('feedback-summary').innerHTML = \`
+                    <div class="summary-card">
+                        <h3>Satisfaction Rate</h3>
+                        <div class="value">\${satisfactionRate}%</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Total Feedback</h3>
+                        <div class="value">\${totalFeedback}</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>RAG Status</h3>
+                        <div class="value" style="color: green;">Active</div>
+                        <small style="color: #666;">\${data.rag.feedbackSources} tenants contributing</small>
+                    </div>
+                \`;
+
+                // Feedback Table
+                const fbBody = document.getElementById('feedback-body');
+                if (recentFeedback.length === 0) {
+                    fbBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No feedback recorded yet</td></tr>';
+                } else {
+                    fbBody.innerHTML = recentFeedback.map(fb => \`
+                        <tr>
+                            <td>\${fb.tenantId}</td>
+                            <td>\${fb.rating === 'thumbs_up' ? '👍' : '👎'}</td>
+                            <td>\${fb.userMessage.substring(0, 50)}...</td>
+                            <td>\${fb.feedback || '-'}</td>
+                            <td>\${new Date(fb.timestamp).toLocaleString()}</td>
+                        </tr>
+                    \`).join('');
+                }
                 
             } catch (error) {
                 console.error('Error loading dashboard:', error);
@@ -1102,7 +1228,10 @@ const PROPERTIES_GCS_PATH = process.env.PROPERTIES_GCS_PATH || 'properties.json'
 const PROPERTIES_POLL_SEC = Number(process.env.PROPERTIES_POLL_SEC) || 3600;
 const PROPERTIES_STORE = process.env.PROPERTIES_STORE || 'gcs'; // 'gcs' | 'firestore' | 'local'
 const FIRESTORE_COLLECTION = process.env.PROPERTIES_FIRESTORE_COLLECTION || 'properties';
-const MULTI_TENANT_MODE = process.env.MULTI_TENANT_MODE === 'true';
+const MULTI_TENANT_MODE = String(process.env.MULTI_TENANT_MODE).trim() === 'true';
+
+console.log(`[CONFIG] Multi-Tenant Mode: ${MULTI_TENANT_MODE}`);
+console.log(`[CONFIG] Properties Store: ${PROPERTIES_STORE}`);
 
 // Co-brokerage configuration: which tenants can access office-wide search
 const cobrokerageConfig = new Map(); // tenant -> { enabled: boolean, sharedTenants: [] }
@@ -1211,11 +1340,18 @@ function getTenantFirestoreCollection(tenantId) {
 
 async function loadPropertiesFromLocal() {
     try {
-        properties = JSON.parse(fs.readFileSync('properties.json', 'utf8'));
-        console.log(`Loaded ${properties.length} properties from local file.`);
+        const data = JSON.parse(fs.readFileSync('properties.json', 'utf8'));
+        console.log(`Loaded ${data.length} properties from local file.`);
+        if (!MULTI_TENANT_MODE) {
+            properties = data;
+        }
+        return data;
     } catch (e) {
         console.log('properties.json not found or empty in local filesystem, starting with empty list.');
-        properties = [];
+        if (!MULTI_TENANT_MODE) {
+            properties = [];
+        }
+        return [];
     }
 }
 
@@ -1442,10 +1578,15 @@ const tools = {
 const systemInstruction = `You are a Ray White real estate assistant. Be friendly, professional, and natural. Use emojis sparingly.
 
 **CORE RULES**:
-1. Maintain language consistency - match user's language (EN/ID) throughout conversation
+1. **LANGUAGE ADAPTATION**: 
+   - If the user speaks Indonesian or if you see [LANG: ID], you MUST reply in Indonesian.
+   - For Indonesian: Use formal but friendly tone ("Saya" not "Aku"). Use terms like "juta", "milyar", "ruko".
+   - If the user speaks English, reply in English.
+   - Maintain the language throughout the conversation.
 2. Use [CURRENT DATE AND TIME] context for all date-related responses
 3. When user references "this property", use [CURRENT PAGE CONTEXT] property ID
 4. ALWAYS use tools before answering property queries - NEVER make up listings
+5. **LEARNING**: If you see [LEARNING FROM PREVIOUS FEEDBACK], strictly follow the negative feedback to avoid repeating mistakes.
 
 **CONVERSATION FLOW**:
 1. First message: Ask for visitor's name only (UNLESS user already provided name AND criteria)
@@ -2022,7 +2163,9 @@ app.post('/api/chat', async (req, res) => {
             
             // Prepend feedback context to message
             if (detectedLanguage === 'id') {
-                messageToSend = `[PEMBELAJARAN DARI FEEDBACK SEBELUMNYA:\n${feedbackContext}]\n\n[INSTRUKSI: Jawab dalam Bahasa Indonesia]\n\n${message}`;
+                // Ensure we preserve the existing contextPrefix if it exists
+                const baseMessage = contextPrefix ? (contextPrefix + message) : message;
+                messageToSend = `[PEMBELAJARAN DARI FEEDBACK SEBELUMNYA:\n${feedbackContext}]\n\n[INSTRUKSI: Jawab dalam Bahasa Indonesia]\n\n${baseMessage}`;
             } else {
                 messageToSend = `[LEARNING FROM PREVIOUS FEEDBACK:\n${feedbackContext}]\n\n${messageToSend}`;
             }
@@ -3009,7 +3152,7 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
                     const agentName = process.env.AGENT_NAME || 'Your Ray White Agent';
                     const agentPhone = process.env.AGENT_PHONE || '';
 
-                    const subject = `📅 Viewing Confirmed: ${propertyTitle}`;
+                    const subject = `📅 Viewing Confirmed: ${visitor_name} - ${propertyTitle}`;
 
                     // Generate HTML email for visitor
                     const visitorHTML = generateVisitorEmailHTML({
@@ -3057,7 +3200,7 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
                         try {
                             await sendEmail({ 
                                 to: agentEmail, 
-                                subject: `🔥 New Viewing Request: ${propertyTitle}`,
+                                subject: `🔥 New Viewing Request: ${visitor_name} - ${propertyTitle}`,
                                 text: `New viewing request:\n\nVisitor: ${visitor_name}\nEmail: ${visitor_email}\nPhone: ${visitor_phone}\nProperty: ${propertyTitle}\nDate: ${correctedDate}\nTime: ${preferred_time}\n\nMessage: ${viewingMessage || 'N/A'}`,
                                 html: agentHTML
                             });
