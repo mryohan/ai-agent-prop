@@ -41,13 +41,30 @@ The agent is equipped with custom tools defined via the Gemini API:
 *   `schedule_viewing`: Validates dates/times and triggers the email workflow.
 *   `collect_visitor_info`: intelligently extracts contact details from natural conversation.
 
-#### 3. Observability & Feedback Loops
+#### 3. Advanced Security: 6-Category Threat Detection
+Instead of generic filters, we implemented a custom regex-based security layer (`detectMaliciousPrompt`) that scans every input before it reaches the LLM. It blocks 6 specific threat categories:
+*   **Prompt Injection**: Attempts to override system instructions (e.g., "Ignore previous instructions").
+*   **PII Leaks**: Patterns matching credit cards, emails, or phone numbers in unauthorized contexts.
+*   **SQL Injection**: Database manipulation attempts (e.g., `UNION SELECT`).
+*   **System Probing**: Attempts to reveal internal architecture or file paths.
+*   **Cross-Site Scripting (XSS)**: Malicious script injection `<script>`.
+*   **Denial of Service**: Oversized or repetitive payloads.
+
+#### 4. Reliability: 5-Layer Anti-Hallucination System
+To ensure the agent never invents property details, we built a multi-stage verification pipeline:
+1.  **Low Temperature Config**: Set to `0.2` to minimize creative variance.
+2.  **System Prompt Constraints**: Explicit instructions to "never invent details" and "always use tools".
+3.  **Tool Enforcement**: A retry loop that forces the model to call `search_properties` if it attempts to answer a factual question without data.
+4.  **Output Validation**: The `validateResponse` function cross-references the AI's answer against the tool's JSON output (e.g., checking if the price mentioned matches the database).
+5.  **Citation Requirement**: The agent must cite the specific property ID it is referencing.
+
+#### 5. Observability & Feedback Loops
 We implemented a robust observability stack:
 *   **Firestore Logging**: Every interaction, feedback rating (thumbs up/down), and security incident is logged.
 *   **RAG Feedback Loop**: Negative feedback triggers an alert to admins, allowing for continuous prompt refinement.
 *   **Security Monitoring**: A dedicated dashboard tracks attempts at prompt injection or PII extraction.
 
-#### 4. Sessions & State Management
+#### 6. Sessions & State Management
 The system maintains conversation history to support multi-turn context.
 *   **Context Awareness**: If a user asks "how much is it?" after viewing a property, the agent knows "it" refers to the previously discussed listing.
 *   **URL Context Injection**: The agent detects the property page the user is browsing and injects that context into the start of the session.
