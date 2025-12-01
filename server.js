@@ -247,6 +247,7 @@ function sendEmailViaSMTP(to, subject, text, html) {
 
 // Email HTML templates
 function generateVisitorEmailHTML({ visitorName, propertyTitle, propertyUrl, propertyImage, date, time, message, agentName, agentPhone }) {
+    const formattedDate = new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     return `
 <!DOCTYPE html>
 <html>
