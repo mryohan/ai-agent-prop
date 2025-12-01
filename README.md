@@ -2,11 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Run-4285F4?logo=google-cloud)](https://cloud.google.com/run)
-[![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%201.5-00897B?logo=google)](https://cloud.google.com/vertex-ai)
+[![Vertex AI](https://img.shields.io/badge/Vertex%20AI-Gemini%202.5-00897B?logo=google)](https://cloud.google.com/vertex-ai)
 
 > **🏆 Kaggle Competition Submission**: Agents Intensive Capstone Project - Enterprise Track
 
-An enterprise-grade conversational AI agent for real estate property search, built with **Google Cloud Vertex AI Gemini 1.5 Flash**. Features multi-tenant architecture, advanced security, anti-hallucination systems, and comprehensive automation for property recommendations and viewings.
+An enterprise-grade conversational AI agent for real estate property search, built with **Google Cloud Vertex AI Gemini 2.5 Flash**. Features multi-tenant architecture, advanced security, anti-hallucination systems, and comprehensive automation for property recommendations and viewings.
 
 ---
 
@@ -39,7 +39,7 @@ Real estate agents miss 40% of calls and take hours to respond to leads. Existin
 This project demonstrates the following key concepts from the course:
 
 ### 1. Agent Powered by an LLM
-- **Model**: Gemini 1.5 Flash via Vertex AI.
+- **Model**: Gemini 2.5 Flash via Vertex AI.
 - **Implementation**: Uses a sophisticated system prompt with persona definition and strict anti-hallucination rules.
 - **Context**: Maintains multi-turn conversation history and injects "page context" (the property the user is currently looking at).
 
@@ -64,134 +64,17 @@ This project demonstrates the following key concepts from the course:
 
 ```mermaid
 graph TD
-    User[User / Website Visitor] -->|Chat Interface| CloudRun[Google Cloud Run (Node.js)]
-    CloudRun -->|Reasoning| Gemini[Vertex AI (Gemini 1.5 Flash)]
-    CloudRun -->|Property Data| GCS[Google Cloud Storage (JSON)]
-    CloudRun -->|State & Logs| Firestore[Google Firestore]
-    CloudRun -->|Emails| Brevo[Brevo SMTP API]
+    User["User / Website Visitor"] -->|Chat Interface| CloudRun["Google Cloud Run (Node.js)"]
+    CloudRun -->|Reasoning| Gemini["Vertex AI (Gemini 2.5 Flash)"]
+    CloudRun -->|Property Data| GCS["Google Cloud Storage (JSON)"]
+    CloudRun -->|State & Logs| Firestore["Google Firestore"]
+    CloudRun -->|Emails| Brevo["Brevo SMTP API"]
     
     subgraph "Agent Logic"
-        Gemini -->|Tool Call| Search[Property Search Tool]
-        Gemini -->|Tool Call| Schedule[Scheduling Tool]
-        Gemini -->|Tool Call| Security[Input/Output Guardrails]
+        Gemini -->|Tool Call| Search["Property Search Tool"]
+        Gemini -->|Tool Call| Schedule["Scheduling Tool"]
+        Gemini -->|Tool Call| Security["Input/Output Guardrails"]
     end
-```
-
-### Data Flow
-1.  **User Query**: Received via WebSocket/REST API.
-2.  **Security Check**: Input is scanned for prompt injection and PII.
-3.  **LLM Processing**: Gemini 1.5 Flash analyzes intent and context.
-4.  **Tool Execution**: Agent calls `search_properties` or `schedule_viewing` if needed.
-5.  **Response Generation**: Natural language response is generated based on tool outputs.
-6.  **Post-Processing**: Response is sanitized and logged to Firestore.
-
----
-
-## ✨ Key Features
-
-### 🏢 Enterprise-Grade Multi-Tenant Architecture
-- **Tenant Isolation**: Complete data separation for multiple real estate offices
-- **Priority-Based Search**: 3-level hierarchy (Personal → Office → National)
-- **Dynamic Property Loading**: GCS/Firestore integration with real-time updates
-- **Scalable Infrastructure**: Google Cloud Run with auto-scaling
-
-### 🛡️ Advanced Security System
-- **6-Category Threat Detection**:
-  - Prompt Injection
-  - PII Extraction
-  - SQL Injection
-  - Competitor Link Insertion
-  - Feedback Manipulation
-  - Command Injection
-- **Response Sanitization**: Removes sensitive data, competitor URLs, and credentials
-- **Severity-Based Blocking**: Critical/High threats blocked, Medium logged
-- **Security Dashboard**: Real-time monitoring with incident tracking
-
-### 🧠 Context Intelligence & Page Awareness
-- **URL Context Injection**: Automatically detects Property IDs from the user's current URL
-- **Seamless "This Property" Queries**: Users can say "schedule a viewing for this property" without specifying the ID
-- **Cross-Turn Memory**: Remembers property context across multiple conversational turns
-- **Smart Refinement**: Handles follow-up queries like "show me cheaper ones" by maintaining search context
-
-### 🧠 Anti-Hallucination Framework
-- **5-Layer Protection System**:
-  1. **Model Configuration**: Low temperature (0.2), focused sampling (top_p=0.8)
-  2. **System Instructions**: Strict rules against fabricating data
-  3. **Response Validation**: Real-time checks against tool outputs
-  4. **Tool Enforcement**: Must use search tools before answering
-  5. **Server-Side Auto-Correction**: Automatically detects if model answers from memory and forces a retry with proper tool usage
-- **Validation Checks**: Property count, price accuracy, feature verification
-- **Feedback Loop**: RAG system learns from user corrections
-
-### 📧 Professional Email System
-- **HTML Email Templates**: Mobile-responsive Ray White branded emails
-- **Dual Notifications**:
-  - Visitor confirmation emails with property details
-  - Agent lead notifications with contact action buttons
-- **Brevo API Integration**: Reliable email delivery
-- **Viewing Confirmations**: Automated scheduling with calendar integration
-
-### 🌐 Multilingual Support
-- **Native Understanding**: English and Bahasa Indonesia
-- **Context Awareness**: Maintains language consistency throughout conversation
-- **Cultural Adaptation**: Understands Indonesian real estate terms (juta, milyar, ruko)
-
-### 📊 Analytics & Monitoring
-- **Token Usage Tracking**: Per-tenant consumption monitoring
-- **Performance Metrics**: Response time, success rate, error tracking
-- **Admin Dashboard**: Real-time system health and security incidents
-- **Feedback Collection**: User satisfaction and improvement suggestions
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Interface                           │
-│  (Chat Widget - Embeddable, Persistent, Cross-Page Sessions)   │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Google Cloud Run (Auto-Scaling)              │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              Express.js API Server                        │  │
-│  │  - Multi-tenant routing                                   │  │
-│  │  - Security threat detection                              │  │
-│  │  - Response sanitization                                  │  │
-│  │  - Token usage tracking                                   │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-└───────────────────────┼─────────────────────────────────────────┘
-                        │
-        ┌───────────────┼───────────────┐
-        ▼               ▼               ▼
-┌──────────────┐ ┌─────────────┐ ┌──────────────┐
-│  Vertex AI   │ │   Firestore │ │     GCS      │
-│  Gemini 2.5  │ │  (NoSQL DB) │ │  (Storage)   │
-│              │ │             │ │              │
-│ - Chat       │ │ - Feedback  │ │ - Properties │
-│ - Function   │ │ - Security  │ │ - Hierarchy  │
-│   Calling    │ │ - Analytics │ │ - Backups    │
-└──────────────┘ └─────────────┘ └──────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────────┐
-│            Function Tools                    │
-│  1. search_properties (Personal Listings)   │
-│  2. search_office_database (Co-brokerage)   │
-│  3. collect_visitor_info (Lead Capture)     │
-│  4. schedule_viewing (Appointment Booking)  │
-│  5. send_inquiry_email (Agent Notification) │
-└─────────────────────────────────────────────┘
-        │
-        ▼
-┌─────────────────────────────────────────────┐
-│         Email System (Brevo API)            │
-│  - Viewing confirmations                    │
-│  - Agent lead notifications                 │
-│  - HTML templates with property images      │
-└─────────────────────────────────────────────┘
 ```
 
 ### Data Flow
