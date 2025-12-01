@@ -119,14 +119,14 @@ graph TD
 - **System Instructions**: 800 tokens (reduced from 3,000 - 73% optimization)
 - **Context Overhead**: 50-200 tokens per request (conditional injection)
 - **Average Total**: 1,200 tokens per request (input + output)
-- **Cost Efficiency**: $0.15 per 1,000 conversations (Gemini 2.5 Flash Lite pricing)
+- **Cost Efficiency**: $0.15 per 1,000 conversations (Gemini 1.5 Flash 002 pricing)
 
 ---
 
 ## 🛠️ Technology Stack
 
 ### Core Technologies
-- **AI Model**: Google Vertex AI Gemini 2.5 Flash Lite (gemini-2.5-flash-lite)
+- **AI Model**: Google Vertex AI Gemini 1.5 Flash Lite (gemini-1.5-flash-002)
 - **Backend**: Node.js 20 + Express.js
 - **Deployment**: Google Cloud Run (Containerized)
 - **Database**: Google Firestore (Native Mode)
@@ -420,7 +420,7 @@ This project is licensed under the MIT License.
 
 ## 🙏 Acknowledgments
 
-- **Google Cloud**: Vertex AI Gemini 2.5, Cloud Run, Firestore
+- **Google Cloud**: Vertex AI Gemini 1.5, Cloud Run, Firestore
 - **Ray White Indonesia**: Real estate domain expertise
 - **Kaggle**: AI Agents Intensive program and competition
 
