@@ -59,6 +59,7 @@ if [ -n "${VERTEX_AI_LOCATION:-}" ]; then echo "VERTEX_AI_LOCATION: \"${VERTEX_A
 
 echo "Deploying Cloud Run service to region ${REGION}..."
 gcloud run deploy ai-agent-prop \
+  --quiet \
   --image $IMAGE \
   --region ${REGION} \
   --platform managed \

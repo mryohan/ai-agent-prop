@@ -1325,13 +1325,10 @@ const vertex_ai = new GoogleGenAI({ vertexai: true, project: PROJECT_ID, locatio
 
 // Model configuration with fallback chain
 const MODEL_PRIORITY = [
-    'gemini-2.5-flash-lite',
-    'gemini-2.5-flash',
-    'gemini-2.5-pro',
-    'gemini-2.0-flash-lite-001',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-2.0-flash-exp'       // Known working fallback
+    'gemini-1.5-flash-002',      // Stable, fast, good at tools
+    'gemini-1.5-pro-002',        // Smarter, good at tools
+    'gemini-1.5-flash',          // Generic alias
+    'gemini-2.0-flash-exp',      // Experimental fallback
 ];
 let currentModelIndex = 0;
 let model = MODEL_PRIORITY[currentModelIndex];
@@ -1340,8 +1337,8 @@ let model = MODEL_PRIORITY[currentModelIndex];
 const tokenUsageByTenant = new Map(); // tenant -> { inputTokens, outputTokens, totalCost, requestCount, lastReset }
 const TOKEN_RESET_INTERVAL = 30 * 24 * 60 * 60 * 1000; // 30 days
 const TOKEN_LIMITS = {
-    free: { monthly: 100000, costPerToken: 0 },
-    paid: { monthly: 1000000, costPerToken: 0.000001 }
+    free: { monthly: 1000000, costPerToken: 0 }, // Increased to 1M for production use
+    paid: { monthly: 10000000, costPerToken: 0.000001 }
 };
 
 // Multi-tenant properties storage
@@ -1731,6 +1728,9 @@ const tools = {
 // System instructions - Optimized for token efficiency
 const systemInstruction = `You are a Ray White real estate agent's assistant. Be friendly, professional, and natural. Focus to find the best matching properties for leads so they give their contacts for the agent later.
 
+**CRITICAL INSTRUCTION**:
+When the user agrees to a viewing or provides a date/time for a visit, you **MUST** call the \`schedule_viewing\` tool immediately. Do not just say you will do it. **CALL THE FUNCTION**.
+
 **CORE RULES**:
 1. **LANGUAGE ADAPTATION**: 
    - If the user speaks Indonesian or if you see [LANG: ID], you MUST reply in Indonesian.
@@ -1747,7 +1747,7 @@ const systemInstruction = `You are a Ray White real estate agent's assistant. Be
 2. Ask for visitor's name only (UNLESS user already provided name AND criteria)
 3. If user provides criteria (e.g. "buy house in Jakarta"): SEARCH IMMEDIATELY. Do not ask for more details first.
 4. After showing properties: Collect phone/email using 'collect_visitor_info' tool
-5. If interested in viewing: Use 'schedule_viewing' tool
+5. If interested in viewing: Use 'schedule_viewing' tool. **DO NOT** just confirm in text. You must execute the tool.
 6. End: Use 'send_inquiry_email' to notify agent
 
 **PROPERTY SEARCH**:
@@ -3389,6 +3389,7 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
                     const propertyImage = property ? (property.imageUrl || property.image) : '';
 
                     const agentEmail = process.env.AGENT_NOTIFICATION_EMAIL || process.env.EMAIL_USER;
+                    console.log(`[${tenantId}] Agent Email Target: '${agentEmail}' (Env: AGENT_NOTIFICATION_EMAIL=${process.env.AGENT_NOTIFICATION_EMAIL}, EMAIL_USER=${process.env.EMAIL_USER})`);
                     const agentName = process.env.AGENT_NAME || 'Your Ray White Agent';
                     const agentPhone = process.env.AGENT_PHONE || '';
 
@@ -3437,6 +3438,7 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
 
                     // Send lead notification to agent
                     if (agentEmail) {
+                        console.log(`[${tenantId}] Attempting to send agent email to: ${agentEmail}`);
                         try {
                             await sendEmail({ 
                                 to: agentEmail, 
@@ -3449,6 +3451,8 @@ Please follow up with ${visitor_name} at ${visitor_email} or ${visitor_phone}.
                             console.error(`[${tenantId}] ✗ Failed to send agent email to ${agentEmail}:`, emailError.message);
                             // Continue even if agent email fails
                         }
+                    } else {
+                        console.warn(`[${tenantId}] ⚠ No agent email configured, skipping notification.`);
                     }
 
                     const responseText = `Perfect! I've scheduled your viewing for ${propertyTitle} on ${correctedDate} at ${preferred_time}. You'll receive a confirmation email shortly, and our agent will contact you to finalize the details. Looking forward to showing you the property! 🏡`;
