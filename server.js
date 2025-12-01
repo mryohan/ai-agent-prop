@@ -1606,11 +1606,12 @@ const systemInstruction = `You are a Ray White real estate assistant. Be friendl
 - Highlight key features and POIs from property data
 
 **NO MATCH STRATEGIES** (in order):
-1. Suggest different property types
-2. Suggest 10-20% budget increase
-3. Suggest nearby locations
-4. Use 'search_office_database' (show details only, no links - say "handled by colleague")
-5. Gracefully end and use 'send_inquiry_email'
+1. The system will automatically broaden the search location if exact matches fail. If you see a "Note:" about this, explain it to the user.
+2. Suggest different property types
+3. Suggest 10-20% budget increase
+4. Suggest nearby locations
+5. Use 'search_office_database' (show details only, no links - say "handled by colleague")
+6. Gracefully end and use 'send_inquiry_email'
 
 **ANTI-HALLUCINATION**:
 - Only use data from tool results
@@ -2488,6 +2489,90 @@ app.post('/api/chat', async (req, res) => {
                 });
                 
                 let fallbackMessage = '';
+
+                // Broaden Location Fallback: If no results and location was specific, try broader search
+                if (topResults.length === 0 && args.location) {
+                    console.log(`[${tenantId}] No results for specific location "${args.location}". Attempting broad search...`);
+                    
+                    let broadResults = tenantProperties;
+                    const loc = args.location.toLowerCase();
+                    
+                    // Relaxed Location Filter: Match ANY significant token
+                    const stopWords = ['jalan', 'jl', 'jl.', 'daerah', 'kawasan', 'wilayah', 'area', 'lokasi', 'di', 'ke', 'dari', 'near', 'dekat'];
+                    const tokens = loc.split(/[\s,]+/).filter(t => t.length > 2 && !stopWords.includes(t));
+                    
+                    if (tokens.length > 0) {
+                        broadResults = broadResults.filter(p => {
+                            const searchText = `${p.location || ''} ${p.title || ''} ${p.description || ''} ${p.poi || ''}`.toLowerCase();
+                            // Match ANY token instead of ALL
+                            return tokens.some(token => searchText.includes(token));
+                        });
+                        
+                        // Re-apply other filters
+                        if (args.type) {
+                            broadResults = broadResults.filter(p => p.type && p.type.toLowerCase() === args.type.toLowerCase());
+                        }
+                        if (args.keyword) {
+                            const kw = args.keyword.toLowerCase();
+                            broadResults = broadResults.filter(p =>
+                                (p.description && p.description.toLowerCase().includes(kw)) ||
+                                (p.title && p.title.toLowerCase().includes(kw))
+                            );
+                        }
+                        if (args.property_category) {
+                            const category = args.property_category.toLowerCase();
+                            broadResults = broadResults.filter(p => {
+                                const locationLower = (p.location || '').toLowerCase();
+                                const titleLower = (p.title || '').toLowerCase();
+                                const descriptionLower = (p.description || '').toLowerCase();
+                                const textToSearch = `${locationLower} ${titleLower} ${descriptionLower}`;
+
+                                if (category === 'rumah') {
+                                    const hasRumah = textToSearch.includes('rumah');
+                                    const isHitungTanah = textToSearch.includes('hitung tanah');
+                                    const hasExclusions = textToSearch.includes('apartemen') || 
+                                                         textToSearch.includes('ruko') || 
+                                                         textToSearch.includes('gedung') || 
+                                                         (textToSearch.includes('tanah') && !isHitungTanah);
+                                    return hasRumah && !hasExclusions;
+                                } else if (category === 'apartemen') return textToSearch.includes('apartemen');
+                                else if (category === 'ruko') return textToSearch.includes('ruko');
+                                else if (category === 'tanah') return textToSearch.includes('tanah');
+                                else if (category === 'gedung') return textToSearch.includes('gedung') || textToSearch.includes('kantor');
+                                return true;
+                            });
+                        }
+                        if (args.max_price) {
+                             broadResults = broadResults.filter(p => {
+                                if (!p.price) return false;
+                                const priceStr = p.price.toLowerCase();
+                                let numericValue = 0;
+                                if (priceStr.includes('milyar') || priceStr.includes('miliar')) {
+                                    const match = priceStr.match(/(\d+[\.,]?\d*)\s*(milyar|miliar)/);
+                                    if (match) numericValue = parseFloat(match[1].replace(',', '.')) * 1000000000;
+                                } else if (priceStr.includes('juta')) {
+                                    const match = priceStr.match(/(\d+[\.,]?\d*)\s*juta/);
+                                    if (match) numericValue = parseFloat(match[1].replace(',', '.')) * 1000000;
+                                } else {
+                                    const cleanStr = priceStr.replace(/rp\.?\s*/g, '').replace(/\s/g, '');
+                                    const dotCount = (cleanStr.match(/\./g) || []).length;
+                                    const commaCount = (cleanStr.match(/,/g) || []).length;
+                                    if (dotCount > 1) numericValue = parseFloat(cleanStr.replace(/\./g, ''));
+                                    else if (commaCount > 1) numericValue = parseFloat(cleanStr.replace(/,/g, ''));
+                                    else if (dotCount === 1 || commaCount === 1) numericValue = parseFloat(cleanStr.replace(/[.,]/g, ''));
+                                }
+                                if (numericValue === 0) return true;
+                                return numericValue <= args.max_price;
+                            });
+                        }
+                        
+                        if (broadResults.length > 0) {
+                            console.log(`[${tenantId}] Broad search found ${broadResults.length} properties`);
+                            topResults = broadResults.slice(0, 3);
+                            fallbackMessage = `\n\nNote: I couldn't find properties exactly in "${args.location}", so I broadened the search to include nearby areas matching "${tokens.join(' or ')}".`;
+                        }
+                    }
+                }
 
                 // Fallback logic: if searching for "rumah" and no results, try apartments then shophouses
                 if (topResults.length === 0 && args.property_category === 'rumah') {
