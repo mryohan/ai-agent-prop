@@ -1772,7 +1772,8 @@ When the user agrees to a viewing or provides a date/time for a visit, you **MUS
 3. Suggest 10-20% budget increase
 4. Suggest nearby locations
 5. Use 'search_office_database' (show details only, no links - say "handled by colleague")
-6. Gracefully end and use 'send_inquiry_email'
+6. If nothing found anywhere, use 'send_inquiry_email' with visitor's criteria
+   IMPORTANT: DO NOT ask for contact info again if already collected
 
 **ANTI-HALLUCINATION**:
 - Only use data from tool results
@@ -3269,7 +3270,13 @@ app.post('/api/chat', async (req, res) => {
                         name: 'collect_visitor_info',
                         response: {
                             success: true,
-                            message: `Contact information saved for ${visitor_name}`
+                            message: `Contact information saved for ${visitor_name}`,
+                            visitor_data: {
+                                name: visitor_name,
+                                phone: visitor_phone,
+                                email: visitor_email
+                            },
+                            reminder: 'IMPORTANT: This contact info is now saved. DO NOT ask for it again in this conversation.'
                         }
                     }
                 };
